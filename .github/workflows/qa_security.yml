@@ -28,7 +28,7 @@ jobs:
 
     - name: Install Horusec CLI via Bash
       run: |
-        curl -fsSL https://raw.githubusercontent.com/ZupIT/horusec/master/deployments/scripts/install.sh | bash
+        curl -fsSL https://raw.githubusercontent.com/ZupIT/horusec/master/deployments/scripts/install.sh | bash -s latest
         echo 'export PATH=$PATH:~/.horusec/bin' >> ~/.bashrc
         source ~/.bashrc
 
