@@ -3,7 +3,7 @@ name: Deploy infra
 on:
   pull_request:
     branches:
-      - infra
+      - infra/*
 
 jobs:
   build:

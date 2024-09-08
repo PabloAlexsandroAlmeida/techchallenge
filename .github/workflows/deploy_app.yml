@@ -3,7 +3,7 @@ name: Deploy application
 on:
   pull_request:
     branches:
-      - app
+      - app/*s
 
 jobs:
   build:
