@@ -1,9 +1,9 @@
 name: Deploy infra
 
 on:
-  pull_request:
+  push:
     branches:
-      - infra/*
+      - 'infra/*'
 
 jobs:
   build:

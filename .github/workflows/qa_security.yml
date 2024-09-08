@@ -26,8 +26,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run Horusec
-      id: run_horusec
-      uses: fike/horusec-action@v0.1
-      with:
-        arguments: -p="./"
+    - name: Install Horusec CLI via Bash
+      run: |
+        curl -fsSL https://raw.githubusercontent.com/ZupIT/horusec/master/deployments/scripts/install.sh | bash
+        echo 'export PATH=$PATH:~/.horusec/bin' >> ~/.bashrc
+        source ~/.bashrc
+
+    - name: Run Horusec for security analysis
+      run: |
+        horusec start -p ./ --log-level=info
