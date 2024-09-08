@@ -34,4 +34,4 @@ jobs:
 
     - name: Run Horusec for security analysis
       run: |
-        horusec start -p ./ --log-level=info
+        horusec start -p ./ --log-level=info --disable-docker="true"
