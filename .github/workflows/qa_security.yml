@@ -26,7 +26,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run Horusec for security analysis
-      run: |
-        curl -fsSL https://horusec.io/bin/install.sh | bash
-        horusec start -p ./ --log-level=info
+    - name: Run Horusec
+      id: run_horusec
+      uses: fike/horusec-action@v0.1
+      with:
+        arguments: --config-file-path=horusec-config.json
