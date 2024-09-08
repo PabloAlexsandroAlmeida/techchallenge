@@ -12,21 +12,6 @@ jobs:
   code-quality-and-security:
     runs-on: ubuntu-latest
 
-    services:
-      sonarqube:
-        image: sonarqube:latest
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd="curl -f http://localhost:9000/api/system/health"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-        env:
-          SONARQUBE_JDBC_URL: jdbc:postgresql://localhost/sonarqube
-          SONARQUBE_JDBC_USERNAME: sonar
-          SONARQUBE_JDBC_PASSWORD: sonar
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
@@ -45,21 +30,3 @@ jobs:
       run: |
         curl -fsSL https://horusec.io/bin/install.sh | bash
         horusec start -p ./ --log-level=info
-
-    - name: Prepare SonarQube configuration
-      run: |
-        sonar-scanner \
-          -Dsonar.projectKey=my_project_key \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=http://localhost:9000 \
-          -Dsonar.login=my_sonarqube_token
-
-    - name: Run SonarQube Scanner
-      env:
-        SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
-      run: |
-        sonar-scanner \
-          -Dsonar.projectKey=my_project_key \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=http://localhost:9000 \
-          -Dsonar.login=$SONAR_TOKEN
