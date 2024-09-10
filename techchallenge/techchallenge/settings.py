@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'vitivinicultura',
+    'rest_framework',
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [
