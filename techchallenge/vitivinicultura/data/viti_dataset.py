@@ -2,211 +2,243 @@ import pandas as pd
 import json
 import requests
 from io import StringIO
+import logging
+from typing import Optional, Dict, Any, List
 
-# Classe principal que lida com a sanitização de datasets. 
-# Baixa o CSV de uma URL, faz o tratamento e oferece métodos para salvar em diferentes formatos.
+# Configuração do logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+
 class DatasetSanitizer:
-    def __init__(self, url, delimiter=';', encoding='utf-8'):
+    """
+    Classe base para manipulação de sanitização de datasets. Baixa um arquivo CSV de uma URL,
+    processa e fornece métodos para salvar em diferentes formatos.
+    """
+
+    def __init__(self, url: str, delimiter: str = ';', encoding: str = 'utf-8'):
         self.url = url  # URL do arquivo CSV a ser baixado
         self.delimiter = delimiter  # Delimitador do CSV, por padrão é ponto e vírgula
         self.encoding = encoding  # Codificação do arquivo, por padrão UTF-8
-        self.df = None  # DataFrame onde o CSV será armazenado após o download
+        self.df: Optional[pd.DataFrame] = None  # DataFrame onde o CSV será armazenado após o download
 
-    # Método para baixar o CSV do site da Embrapa e carregar em um DataFrame pandas
-    def download_and_load_csv(self):
+    def download_and_load_csv(self) -> None:
+        """
+        Baixa o CSV da URL fornecida e carrega em um DataFrame pandas.
+        """
         try:
-            print(f"Baixando arquivo de: {self.url}")
-            response = requests.get(self.url)  # Baixa o conteúdo do CSV
-            response.raise_for_status()  # Verifica se o download foi bem-sucedido
-            
-            # Salva o conteúdo original baixado em um arquivo local
-            original_output_path = f'{self.url.split("/")[-1]}'  # Nome do arquivo original
+            logging.info(f"Baixando arquivo de: {self.url}")
+            response = requests.get(self.url)
+            response.raise_for_status()
+
+            # Salva o conteúdo original em um arquivo local
+            original_output_path = self.url.split("/")[-1]
             with open(original_output_path, 'wb') as f:
-                f.write(response.content)  # Salva o conteúdo binário
-            print(f"Arquivo original salvo com sucesso em: {original_output_path}")
-            
-            # Decodifica o conteúdo para string usando a codificação especificada
+                f.write(response.content)
+            logging.info(f"Arquivo original salvo com sucesso em: {original_output_path}")
+
+            # Decodifica o conteúdo e carrega no DataFrame
             csv_data = response.content.decode(self.encoding)
-            
-            # Carrega o CSV para o DataFrame pandas
             self.df = pd.read_csv(StringIO(csv_data), delimiter=self.delimiter)
-            print(f"Arquivo baixado e carregado com sucesso: {self.url}")
+            logging.info(f"Arquivo baixado e carregado com sucesso: {self.url}")
+
         except Exception as e:
-            print(f"Erro ao baixar ou carregar o arquivo de {self.url}: {e}")
+            logging.error(f"Erro ao baixar ou carregar o arquivo de {self.url}: {e}")
             raise
 
-    # Método para salvar o DataFrame limpo em CSV
-    def save_csv(self, df_clean, output_path):
+    def save_csv(self, df_clean: pd.DataFrame, output_path: str) -> None:
+        """
+        Salva o DataFrame limpo em um arquivo CSV.
+        """
         try:
-            df_clean.to_csv(output_path, index=False)  # Salva o DataFrame sem o índice
-            print(f"CSV sanitizado salvo com sucesso em: {output_path}")
+            df_clean.to_csv(output_path, index=False)
+            logging.info(f"CSV sanitizado salvo com sucesso em: {output_path}")
         except Exception as e:
-            print(f"Erro ao salvar o arquivo CSV sanitizado: {e}")
+            logging.error(f"Erro ao salvar o arquivo CSV sanitizado: {e}")
             raise
 
-    # Método para salvar o DataFrame limpo em JSON
-    def save_json(self, df_clean, output_path):
+    def save_json(self, df_clean: pd.DataFrame, output_path: str) -> None:
+        """
+        Salva o DataFrame limpo em um arquivo JSON.
+        """
         try:
             json_data = df_clean.to_json(orient='records', lines=True, force_ascii=False)
             with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(json_data)  # Salva o JSON em formato legível
-            print(f"JSON sanitizado salvo com sucesso em: {output_path}")
+                f.write(json_data)
+            logging.info(f"JSON sanitizado salvo com sucesso em: {output_path}")
         except Exception as e:
-            print(f"Erro ao salvar o arquivo JSON sanitizado: {e}")
+            logging.error(f"Erro ao salvar o arquivo JSON sanitizado: {e}")
             raise
 
-# Classe específica para sanitização do arquivo de Produção
+
 class ProducaoSanitizer(DatasetSanitizer):
-    def sanitize(self):
+    def sanitize(self) -> pd.DataFrame:
+        """
+        Sanitiza o dataset de 'Produção'.
+        """
         try:
-            print("Iniciando sanitização do arquivo de Produção")
-            # Remove as colunas desnecessárias
+            logging.info("Iniciando sanitização do arquivo de 'Produção'")
+            # Remove colunas desnecessárias
             self.df = self.df.drop(columns=['control', 'id'])
-            self.df['Tipo'] = None  # Cria nova coluna 'Tipo'
-            self.df['produto'] = self.df['produto'].str.strip()  # Remove espaços em branco dos produtos
-            current_type = None  # Variável para armazenar o tipo atual
+            self.df['Tipo'] = None  # Cria a coluna 'Tipo'
+            self.df['produto'] = self.df['produto'].str.strip()  # Remove espaços em branco de 'produto'
 
-            # Itera sobre cada linha do DataFrame para identificar os tipos de produtos
-            for index, row in self.df.iterrows():
-                if row['produto'].isupper():  # Se o nome do produto está em maiúsculas, é um tipo
-                    current_type = row['produto']
-                else:
-                    self.df.at[index, 'Tipo'] = current_type  # Define o tipo nas linhas subsequentes
+            # Identifica tipos e atribui
+            mask_upper = self.df['produto'].str.isupper()
+            self.df.loc[mask_upper, 'Tipo'] = self.df.loc[mask_upper, 'produto']
+            self.df['Tipo'] = self.df['Tipo'].ffill()
 
-            # Filtra o DataFrame para remover as linhas que são apenas o nome do tipo
-            df_clean = self.df[~self.df['produto'].str.isupper()]
-            # Adiciona uma coluna de ID incremental
+            # Remove linhas que são apenas nomes de tipos
+            df_clean = self.df[~mask_upper].copy()
+            # Adiciona uma coluna 'id' incremental
             df_clean.insert(0, 'id', range(1, len(df_clean) + 1))
-            print("Sanitização do arquivo de Produção concluída")
+            logging.info("Sanitização do arquivo de 'Produção' concluída")
             return df_clean
+
         except Exception as e:
-            print(f"Erro durante a sanitização de Produção: {e}")
+            logging.error(f"Erro durante a sanitização de 'Produção': {e}")
             raise
 
-# Classe específica para sanitização do arquivo de Processamento
+
 class ProcessamentoSanitizer(DatasetSanitizer):
-    def sanitize(self):
+    def sanitize(self) -> pd.DataFrame:
+        """
+        Sanitiza o dataset de 'Processamento'.
+        """
         try:
-            print("Iniciando sanitização do arquivo de Processamento")
+            logging.info("Iniciando sanitização do arquivo de 'Processamento'")
             # Remove colunas desnecessárias
             self.df = self.df.drop(columns=['control', 'id'])
-            self.df['Tipo'] = None  # Cria nova coluna 'Tipo'
-            self.df['cultivar'] = self.df['cultivar'].str.strip()  # Remove espaços em branco da coluna cultivar
-            current_type = None
+            self.df['Tipo'] = None  # Cria a coluna 'Tipo'
+            self.df['cultivar'] = self.df['cultivar'].str.strip()  # Remove espaços em branco de 'cultivar'
 
-            # Itera pelas linhas para identificar o tipo de cultivar
-            for index, row in self.df.iterrows():
-                if row['cultivar'].isupper():  # Cultivar em maiúsculas indica um novo tipo
-                    current_type = row['cultivar']
-                else:
-                    self.df.at[index, 'Tipo'] = current_type  # Atribui o tipo corrente às linhas subsequentes
+            # Identifica tipos e atribui
+            mask_upper = self.df['cultivar'].str.isupper()
+            self.df.loc[mask_upper, 'Tipo'] = self.df.loc[mask_upper, 'cultivar']
+            self.df['Tipo'] = self.df['Tipo'].ffill()
 
-            # Remove linhas que têm apenas o nome do tipo
-            df_clean = self.df[~self.df['cultivar'].str.isupper()]
-            # Adiciona uma coluna de ID incremental
+            # Remove linhas que são apenas nomes de tipos
+            df_clean = self.df[~mask_upper].copy()
+            # Adiciona uma coluna 'id' incremental
             df_clean.insert(0, 'id', range(1, len(df_clean) + 1))
-            print("Sanitização do arquivo de Processamento concluída")
+            logging.info("Sanitização do arquivo de 'Processamento' concluída")
             return df_clean
+
         except Exception as e:
-            print(f"Erro durante a sanitização de Processamento: {e}")
+            logging.error(f"Erro durante a sanitização de 'Processamento': {e}")
             raise
 
-# Classe específica para sanitização do arquivo de Comércio
+
 class ComercioSanitizer(DatasetSanitizer):
-    def sanitize(self):
+    def sanitize(self) -> pd.DataFrame:
+        """
+        Sanitiza o dataset de 'Comércio'.
+        """
         try:
-            print("Iniciando sanitização do arquivo de Comércio")
+            logging.info("Iniciando sanitização do arquivo de 'Comércio'")
             # Remove colunas desnecessárias
             self.df = self.df.drop(columns=['control', 'id'])
-            self.df['Tipo'] = None  # Cria nova coluna 'Tipo'
-            self.df['Produto'] = self.df['Produto'].str.strip()  # Remove espaços em branco dos produtos
-            current_type = None
+            self.df['Tipo'] = None  # Cria a coluna 'Tipo'
+            self.df['Produto'] = self.df['Produto'].str.strip()  # Remove espaços em branco de 'Produto'
 
-            # Itera pelas linhas para identificar o tipo de produto
-            for index, row in self.df.iterrows():
-                if row['Produto'].isupper():  # Produto em maiúsculas indica um tipo
-                    current_type = row['Produto']
-                else:
-                    self.df.at[index, 'Tipo'] = current_type  # Atribui o tipo corrente
+            # Identifica tipos e atribui
+            mask_upper = self.df['Produto'].str.isupper()
+            self.df.loc[mask_upper, 'Tipo'] = self.df.loc[mask_upper, 'Produto']
+            self.df['Tipo'] = self.df['Tipo'].ffill()
 
-            # Remove as linhas que são apenas o nome do tipo
-            df_clean = self.df[~self.df['Produto'].str.isupper()]
-            # A partir da linha que contém "Outros vinhos", define o tipo como "OUTROS"
-            outros_start_index = df_clean[df_clean['Produto'].str.contains("Outros vinhos", case=False, na=False)].index[0]
-            df_clean.loc[outros_start_index:, 'Tipo'] = "OUTROS"
-            # Adiciona uma coluna de ID incremental
+            # Remove linhas que são apenas nomes de tipos
+            df_clean = self.df[~mask_upper].copy()
+
+            # Define 'Tipo' como 'OUTROS' a partir de 'Outros vinhos'
+            outros_mask = df_clean['Produto'].str.contains("Outros vinhos", case=False, na=False)
+            if outros_mask.any():
+                outros_start_index = df_clean.loc[outros_mask].index[0]
+                df_clean.loc[outros_start_index:, 'Tipo'] = "OUTROS"
+
+            # Adiciona uma coluna 'id' incremental
             df_clean.insert(0, 'id', range(1, len(df_clean) + 1))
-            print("Sanitização do arquivo de Comércio concluída")
+            logging.info("Sanitização do arquivo de 'Comércio' concluída")
             return df_clean
+
         except Exception as e:
-            print(f"Erro durante a sanitização de Comércio: {e}")
+            logging.error(f"Erro durante a sanitização de 'Comércio': {e}")
             raise
 
-# Classe específica para sanitização dos arquivos de Importação e Exportação
+
 class ImportacaoExportacaoSanitizer(DatasetSanitizer):
-    def sanitize(self):
+    def sanitize(self) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Sanitiza o dataset de 'Importação' ou 'Exportação'.
+        """
         try:
-            print("Iniciando sanitização do arquivo de Importação/Exportação")
-            data_json = {}  # Dicionário para armazenar os dados sanitizados
-            # Itera por cada linha do DataFrame
+            logging.info("Iniciando sanitização do arquivo de 'Importação/Exportação'")
+            # Identifica colunas correspondentes aos anos
+            year_columns = [col for col in self.df.columns if col.isdigit()]
+
+            data_json = {}
             for _, row in self.df.iterrows():
-                country = row['País']  # Obtém o país da linha atual
-                data_json[country] = []  # Cria uma lista para armazenar os dados desse país
+                pais = row['País']
+                dados_pais = []
 
-                # Itera por cada ano de 1970 a 2023, se as colunas existirem
-                for year in range(1970, 2024):
-                    year_str = str(year)
-                    quantity = row[year_str] if year_str in self.df.columns else None
-                    value = row[f"{year_str}.1"] if f"{year_str}.1" in self.df.columns else None
-
-                    # Se quantidade e valor existirem, adiciona ao dicionário
-                    if quantity is not None and value is not None:
-                        data_json[country].append({
-                            "ano": year,
-                            "quantidade": quantity,
-                            "valor_usd": value
+                for ano in year_columns:
+                    quantidade = row.get(ano)
+                    valor = row.get(f"{ano}.1")
+                    if pd.notnull(quantidade) or pd.notnull(valor):
+                        dados_pais.append({
+                            "ano": int(ano),
+                            "quantidade": quantidade,
+                            "valor_usd": valor
                         })
-            print("Sanitização do arquivo de Importação/Exportação concluída")
+                data_json[pais] = dados_pais
+
+            logging.info("Sanitização do arquivo de 'Importação/Exportação' concluída")
             return data_json
+
         except KeyError as e:
-            print(f"Erro: coluna não encontrada. Verifique se a coluna 'País' ou as colunas de anos estão corretas: {e}")
+            logging.error(f"Erro: coluna não encontrada. Verifique se a coluna 'País' ou as colunas de anos estão corretas: {e}")
             raise
         except Exception as e:
-            print(f"Erro durante a sanitização de Importação/Exportação: {e}")
+            logging.error(f"Erro durante a sanitização de 'Importação/Exportação': {e}")
             raise
 
-# URLs para baixar os arquivos diretamente da internet
-urls = {
-    'producao': 'http://vitibrasil.cnpuv.embrapa.br/download/Producao.csv',
-    'processamento': 'http://vitibrasil.cnpuv.embrapa.br/download/ProcessaViniferas.csv',
-    'comercio': 'http://vitibrasil.cnpuv.embrapa.br/download/Comercio.csv',
-    'importacao': 'http://vitibrasil.cnpuv.embrapa.br/download/ImpVinhos.csv',
-    'exportacao': 'http://vitibrasil.cnpuv.embrapa.br/download/ExpVinho.csv'
-}
 
-# Instancia as classes de sanitização com suas respectivas URLs
-sanitizers = {
-    'producao': ProducaoSanitizer(urls['producao']),
-    'processamento': ProcessamentoSanitizer(urls['processamento']),
-    'comercio': ComercioSanitizer(urls['comercio']),
-    'importacao': ImportacaoExportacaoSanitizer(urls['importacao']),
-    'exportacao': ImportacaoExportacaoSanitizer(urls['exportacao']),
-}
+def main():
+    # URLs para baixar os arquivos diretamente da internet
+    urls = {
+        'producao': 'http://vitibrasil.cnpuv.embrapa.br/download/Producao.csv',
+        'processamento': 'http://vitibrasil.cnpuv.embrapa.br/download/ProcessaViniferas.csv',
+        'comercio': 'http://vitibrasil.cnpuv.embrapa.br/download/Comercio.csv',
+        'importacao': 'http://vitibrasil.cnpuv.embrapa.br/download/ImpVinhos.csv',
+        'exportacao': 'http://vitibrasil.cnpuv.embrapa.br/download/ExpVinho.csv'
+    }
 
-# Loop para processar e sanitizar cada arquivo
-for key, sanitizer in sanitizers.items():
-    try:
-        print(f"\nIniciando processamento para: {key}")
-        sanitizer.download_and_load_csv()  # Baixa e carrega o CSV
+    # Instancia as classes de sanitização com suas respectivas URLs
+    sanitizers = {
+        'producao': ProducaoSanitizer(urls['producao']),
+        'processamento': ProcessamentoSanitizer(urls['processamento']),
+        'comercio': ComercioSanitizer(urls['comercio']),
+        'importacao': ImportacaoExportacaoSanitizer(urls['importacao']),
+        'exportacao': ImportacaoExportacaoSanitizer(urls['exportacao']),
+    }
 
-        if key in ['producao', 'processamento', 'comercio']:
-            df_clean = sanitizer.sanitize()  # Sanitiza o DataFrame
-            sanitizer.save_csv(df_clean, f'{key}_sanitizado.csv')  # Salva como CSV
-            sanitizer.save_json(df_clean, f'{key}_sanitizado.json')  # Salva como JSON
-        else:  # Para importação/exportação, salva apenas como JSON
-            data_json = sanitizer.sanitize()
-            with open(f'{key}_sanitizado.json', 'w', encoding='utf-8') as json_file:
-                json.dump(data_json, json_file, indent=4, ensure_ascii=False)  # Salva o JSON formatado
-            print(f"JSON sanitizado salvo com sucesso em: {key}_sanitizado.json")
-    except Exception as e:
-        print(f"Erro ao processar {key}: {e}")
+    # Loop para processar e sanitizar cada arquivo
+    for key, sanitizer in sanitizers.items():
+        try:
+            logging.info(f"\nIniciando processamento para: {key}")
+            sanitizer.download_and_load_csv()  # Baixa e carrega o CSV
+
+            if key in ['producao', 'processamento', 'comercio']:
+                df_clean = sanitizer.sanitize()  # Sanitiza o DataFrame
+                sanitizer.save_csv(df_clean, f'{key}_sanitizado.csv')  # Salva como CSV
+                sanitizer.save_json(df_clean, f'{key}_sanitizado.json')  # Salva como JSON
+            else:
+                data_json = sanitizer.sanitize()
+                output_path = f'{key}_sanitizado.json'
+                with open(output_path, 'w', encoding='utf-8') as json_file:
+                    json.dump(data_json, json_file, indent=4, ensure_ascii=False)  # Salva o JSON formatado
+                logging.info(f"JSON sanitizado salvo com sucesso em: {output_path}")
+        except Exception as e:
+            logging.error(f"Erro ao processar {key}: {e}")
+
+
+if __name__ == "__main__":
+    main()
