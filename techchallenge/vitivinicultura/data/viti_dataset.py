@@ -61,13 +61,15 @@ class DatasetSanitizer:
         Salva o DataFrame limpo em um arquivo JSON.
         """
         try:
-            json_data = df_clean.to_json(orient='records', lines=True, force_ascii=False)
+            # Remova 'lines=True' da chamada
+            json_data = df_clean.to_json(orient='records', force_ascii=False)
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(json_data)
             logging.info(f"JSON sanitizado salvo com sucesso em: {output_path}")
         except Exception as e:
             logging.error(f"Erro ao salvar o arquivo JSON sanitizado: {e}")
             raise
+
 
 
 class ProducaoSanitizer(DatasetSanitizer):
