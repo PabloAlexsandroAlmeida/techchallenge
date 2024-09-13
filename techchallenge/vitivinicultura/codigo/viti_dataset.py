@@ -1,11 +1,13 @@
 import pandas as pd
 import json
 import requests
+import os
 from io import StringIO
 
 class DatasetSanitizer:
-    def __init__(self, url, delimiter=';', encoding='utf-8'):
+    def __init__(self, url, output_path, delimiter=';', encoding='utf-8'):
         self.url = url
+        self.output_path = output_path
         self.delimiter = delimiter
         self.encoding = encoding
         self.df = None
@@ -15,16 +17,20 @@ class DatasetSanitizer:
             print(f"Baixando arquivo de: {self.url}")
             response = requests.get(self.url)
             response.raise_for_status()
-            
+
+            # Certifique-se de que o diretório de saída existe
+            os.makedirs(self.output_path, exist_ok=True)
+
             # Salvar o arquivo original direto no disco
-            original_output_path = f'{self.url.split("/")[-1]}'
+            original_filename = self.url.split("/")[-1]
+            original_output_path = os.path.join(self.output_path, original_filename)
             with open(original_output_path, 'wb') as f:
                 f.write(response.content)
             print(f"Arquivo original salvo com sucesso em: {original_output_path}")
-            
+
             # Decodificar o conteúdo baixado
             csv_data = response.content.decode(self.encoding)
-            
+
             # Carregar o CSV usando a string decodificada
             self.df = pd.read_csv(StringIO(csv_data), delimiter=self.delimiter)
             print(f"Arquivo baixado e carregado com sucesso: {self.url}")
@@ -32,19 +38,31 @@ class DatasetSanitizer:
             print(f"Erro ao baixar ou carregar o arquivo de {self.url}: {e}")
             raise
 
-    def save_csv(self, df_clean, output_path):
+    def save_csv(self, df_clean, filename):
         try:
+            output_path = os.path.join(self.output_path, filename)
             df_clean.to_csv(output_path, index=False)
             print(f"CSV sanitizado salvo com sucesso em: {output_path}")
         except Exception as e:
             print(f"Erro ao salvar o arquivo CSV sanitizado: {e}")
             raise
 
-    def save_json(self, df_clean, output_path):
+    def save_json(self, df_clean, filename):
         try:
+            output_path = os.path.join(self.output_path, filename)
             json_data = df_clean.to_json(orient='records', lines=True, force_ascii=False)
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(json_data)
+            print(f"JSON sanitizado salvo com sucesso em: {output_path}")
+        except Exception as e:
+            print(f"Erro ao salvar o arquivo JSON sanitizado: {e}")
+            raise
+
+    def save_json_data(self, data, filename):
+        try:
+            output_path = os.path.join(self.output_path, filename)
+            with open(output_path, 'w', encoding='utf-8') as json_file:
+                json.dump(data, json_file, indent=4, ensure_ascii=False)
             print(f"JSON sanitizado salvo com sucesso em: {output_path}")
         except Exception as e:
             print(f"Erro ao salvar o arquivo JSON sanitizado: {e}")
@@ -159,13 +177,16 @@ urls = {
     'exportacao': 'http://vitibrasil.cnpuv.embrapa.br/download/ExpVinho.csv'
 }
 
+# Defina o caminho onde os dados serão salvos
+output_path = '../vitivinicultura/data/'
+
 # Instanciação e execução
 sanitizers = {
-    'producao': ProducaoSanitizer(urls['producao']),
-    'processamento': ProcessamentoSanitizer(urls['processamento']),
-    'comercio': ComercioSanitizer(urls['comercio']),
-    'importacao': ImportacaoExportacaoSanitizer(urls['importacao']),
-    'exportacao': ImportacaoExportacaoSanitizer(urls['exportacao']),
+    'producao': ProducaoSanitizer(urls['producao'], output_path),
+    'processamento': ProcessamentoSanitizer(urls['processamento'], output_path),
+    'comercio': ComercioSanitizer(urls['comercio'], output_path),
+    'importacao': ImportacaoExportacaoSanitizer(urls['importacao'], output_path),
+    'exportacao': ImportacaoExportacaoSanitizer(urls['exportacao'], output_path),
 }
 
 # Sanitização e salvamento dos dados
@@ -180,8 +201,6 @@ for key, sanitizer in sanitizers.items():
             sanitizer.save_json(df_clean, f'{key}_sanitizado.json')
         else:  # importacao/exportacao
             data_json = sanitizer.sanitize()
-            with open(f'{key}_sanitizado.json', 'w', encoding='utf-8') as json_file:
-                json.dump(data_json, json_file, indent=4, ensure_ascii=False)
-            print(f"JSON sanitizado salvo com sucesso em: {key}_sanitizado.json")
+            sanitizer.save_json_data(data_json, f'{key}_sanitizado.json')
     except Exception as e:
         print(f"Erro ao processar {key}: {e}")
