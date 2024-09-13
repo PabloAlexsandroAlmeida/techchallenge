@@ -4,7 +4,7 @@ import requests
 import pandas as pd
 from io import StringIO
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 # Configurar o logging
 logging.basicConfig(level=logging.INFO)
@@ -12,22 +12,23 @@ logger = logging.getLogger(__name__)
 
 
 class SanitizadorDataset:
-    def __init__(self, url: str, caminho_saida: str, delimitador: str = ';', codificacao: str = 'utf-8'):
+    def __init__(self, config):
         """
         Classe base para sanitização de datasets.
 
-        :param url: URL para download do dataset.
-        :param caminho_saida: Diretório local para salvar o dataset sanitizado.
-        :param delimitador: Delimitador usado no arquivo CSV.
-        :param codificacao: Codificação do arquivo CSV.
+        :param config: Dicionário com a configuração do dataset.
         """
-        self.url = url
-        self.caminho_saida = caminho_saida
-        self.delimitador = delimitador
-        self.codificacao = codificacao
+        self.url = config.get('url')
+        self.caminho_saida = config.get('caminho_saida', '.')
+        self.delimitador = config.get('delimitador', ';')
+        self.codificacao = config.get('codificacao', 'utf-8')
+        self.columns_to_drop = config.get('columns_to_drop', [])
+        self.nome_coluna = config.get('nome_coluna')
+        self.coluna_grupo = config.get('coluna_grupo', 'Tipo')
+        self.special_processing = config.get('special_processing')
         self.df = None
 
-    def baixar_e_carregar_csv(self) -> None:
+    def baixar_e_carregar_csv(self):
         """
         Baixa um arquivo CSV da URL fornecida e carrega em um DataFrame pandas.
         """
@@ -72,38 +73,54 @@ class SanitizadorDataset:
             logger.error(f"Erro ao salvar o arquivo CSV sanitizado: {e}")
             raise
 
-    def salvar_json(self, df_sanitizado: pd.DataFrame, nome_arquivo: str) -> None:
+    def salvar_json(self, dados: Union[pd.DataFrame, Dict[Any, Any]], nome_arquivo: str) -> None:
         """
-        Salva o DataFrame sanitizado em um arquivo JSON.
+        Salva os dados sanitizados em um arquivo JSON.
 
-        :param df_sanitizado: O DataFrame pandas sanitizado.
+        :param dados: Os dados sanitizados como um DataFrame pandas ou um dicionário.
         :param nome_arquivo: O nome do arquivo para salvar o JSON.
         """
         try:
             caminho_saida = os.path.join(self.caminho_saida, nome_arquivo)
-            dados_json = df_sanitizado.to_json(orient='records', force_ascii=False)
-
             with open(caminho_saida, 'w', encoding='utf-8') as f:
-                f.write(dados_json)
+                if isinstance(dados, pd.DataFrame):
+                    dados.to_json(f, orient='records', force_ascii=False)
+                else:
+                    json.dump(dados, f, indent=4, ensure_ascii=False)
             logger.info(f"JSON sanitizado salvo com sucesso em: {caminho_saida}")
         except Exception as e:
             logger.error(f"Erro ao salvar o arquivo JSON sanitizado: {e}")
             raise
 
-    def salvar_dados_json(self, dados: Dict[Any, Any], nome_arquivo: str) -> None:
+    def sanitizar(self):
         """
-        Salva o dicionário de dados sanitizados em um arquivo JSON.
-
-        :param dados: Os dados sanitizados como um dicionário.
-        :param nome_arquivo: O nome do arquivo para salvar o JSON.
+        Sanitiza o dataset com base nas configurações fornecidas.
         """
         try:
-            caminho_saida = os.path.join(self.caminho_saida, nome_arquivo)
-            with open(caminho_saida, 'w', encoding='utf-8') as arquivo_json:
-                json.dump(dados, arquivo_json, indent=4, ensure_ascii=False)
-            logger.info(f"JSON sanitizado salvo com sucesso em: {caminho_saida}")
+            logger.info("Iniciando sanitização do arquivo")
+            if self.columns_to_drop:
+                self.df = self.df.drop(columns=self.columns_to_drop)
+            if self.special_processing == 'importacao_exportacao':
+                self._sanitizar_importacao_exportacao()
+            else:
+                df_sanitizado = self._sanitizar_grupos_maiusculos(
+                    nome_coluna=self.nome_coluna,
+                    coluna_grupo=self.coluna_grupo
+                )
+                if self.special_processing == 'comercio_outros_vinhos':
+                    # Processamento especial para 'Comercio'
+                    df_sanitizado['Produto'] = df_sanitizado['Produto'].str.strip()
+                    indices_outros = df_sanitizado[
+                        df_sanitizado['Produto'].str.contains("Outros vinhos", case=False, na=False)
+                    ].index
+                    if not indices_outros.empty:
+                        indice_inicio = indices_outros[0]
+                        df_sanitizado.loc[indice_inicio:, 'Tipo'] = "OUTROS"
+                self.df = df_sanitizado
+            logger.info("Sanitização concluída")
+            return self.df
         except Exception as e:
-            logger.error(f"Erro ao salvar o arquivo JSON sanitizado: {e}")
+            logger.error(f"Erro durante a sanitização: {e}")
             raise
 
     def _sanitizar_grupos_maiusculos(self, nome_coluna: str, coluna_grupo: str = 'Tipo') -> pd.DataFrame:
@@ -128,91 +145,19 @@ class SanitizadorDataset:
             else:
                 self.df.at[indice, coluna_grupo] = tipo_atual
 
-        # Filtra as linhas onde o valor da coluna está em maiúsculas
+        # Filtra as linhas onde o valor da coluna não está em maiúsculas
         df_sanitizado = self.df[~self.df[nome_coluna].str.isupper()]
         # Reseta o índice e insere a coluna 'id'
         df_sanitizado = df_sanitizado.reset_index(drop=True)
         df_sanitizado.insert(0, 'id', df_sanitizado.index + 1)
         return df_sanitizado
 
-
-class SanitizadorProducao(SanitizadorDataset):
-    def sanitizar(self) -> pd.DataFrame:
+    def _sanitizar_importacao_exportacao(self):
         """
-        Sanitiza o dataset 'Producao'.
-
-        :return: DataFrame pandas sanitizado.
+        Sanitiza datasets de Importação e Exportação transformando-os em formato longo.
         """
         try:
-            logger.info("Iniciando sanitização do arquivo 'Producao'")
-            # Remove colunas desnecessárias
-            self.df = self.df.drop(columns=['control', 'id'])
-            # Usa o método auxiliar
-            df_sanitizado = self._sanitizar_grupos_maiusculos(nome_coluna='produto', coluna_grupo='Tipo')
-            logger.info("Sanitização do arquivo 'Producao' concluída")
-            return df_sanitizado
-        except Exception as e:
-            logger.error(f"Erro durante a sanitização de 'Producao': {e}")
-            raise
-
-
-class SanitizadorProcessamento(SanitizadorDataset):
-    def sanitizar(self) -> pd.DataFrame:
-        """
-        Sanitiza o dataset 'Processamento'.
-
-        :return: DataFrame pandas sanitizado.
-        """
-        try:
-            logger.info("Iniciando sanitização do arquivo 'Processamento'")
-            # Remove colunas desnecessárias
-            self.df = self.df.drop(columns=['control', 'id'])
-            # Usa o método auxiliar
-            df_sanitizado = self._sanitizar_grupos_maiusculos(nome_coluna='cultivar', coluna_grupo='Tipo')
-            logger.info("Sanitização do arquivo 'Processamento' concluída")
-            return df_sanitizado
-        except Exception as e:
-            logger.error(f"Erro durante a sanitização de 'Processamento': {e}")
-            raise
-
-
-class SanitizadorComercio(SanitizadorDataset):
-    def sanitizar(self) -> pd.DataFrame:
-        """
-        Sanitiza o dataset 'Comercio'.
-
-        :return: DataFrame pandas sanitizado.
-        """
-        try:
-            logger.info("Iniciando sanitização do arquivo 'Comercio'")
-            # Remove colunas desnecessárias
-            self.df = self.df.drop(columns=['control', 'id'])
-            # Usa o método auxiliar
-            df_sanitizado = self._sanitizar_grupos_maiusculos(nome_coluna='Produto', coluna_grupo='Tipo')
-
-            # Encontra o índice de "Outros vinhos" e define 'Tipo' como 'OUTROS' a partir desse índice
-            df_sanitizado['Produto'] = df_sanitizado['Produto'].str.strip()
-            indices_outros = df_sanitizado[df_sanitizado['Produto'].str.contains("Outros vinhos", case=False, na=False)].index
-            if not indices_outros.empty:
-                indice_inicio = indices_outros[0]
-                df_sanitizado.loc[indice_inicio:, 'Tipo'] = "OUTROS"
-            logger.info("Sanitização do arquivo 'Comercio' concluída")
-            return df_sanitizado
-        except Exception as e:
-            logger.error(f"Erro durante a sanitização de 'Comercio': {e}")
-            raise
-
-
-class SanitizadorImportacaoExportacao(SanitizadorDataset):
-    def sanitizar(self) -> Dict[str, Any]:
-        """
-        Sanitiza o dataset 'Importacao' ou 'Exportacao'.
-
-        :return: Dados sanitizados como um dicionário.
-        """
-        try:
-            logger.info("Iniciando sanitização do arquivo 'Importacao/Exportacao'")
-            dados_json = {}
+            registros = []
 
             # Obter a lista de anos a partir das colunas
             colunas = self.df.columns
@@ -220,25 +165,21 @@ class SanitizadorImportacaoExportacao(SanitizadorDataset):
 
             for _, linha in self.df.iterrows():
                 pais = linha['País']
-                dados_pais = []
-
                 for coluna_ano in colunas_anos:
                     ano = int(coluna_ano)
                     quantidade = linha.get(coluna_ano, None)
                     valor = linha.get(f"{coluna_ano}.1", None)
 
                     if pd.notnull(quantidade) and pd.notnull(valor):
-                        dados_pais.append({
+                        registros.append({
+                            "País": pais,
                             "ano": ano,
                             "quantidade": quantidade,
                             "valor_usd": valor
                         })
 
-                if dados_pais:
-                    dados_json[pais] = dados_pais
-
-            logger.info("Sanitização do arquivo 'Importacao/Exportacao' concluída")
-            return dados_json
+            df_sanitizado = pd.DataFrame(registros)
+            self.df = df_sanitizado
         except KeyError as e:
             logger.error(f"Erro: coluna não encontrada. Verifique se a coluna 'País' ou as colunas de anos estão corretas: {e}")
             raise
@@ -248,40 +189,67 @@ class SanitizadorImportacaoExportacao(SanitizadorDataset):
 
 
 def main():
-    # URLs para baixar os arquivos diretamente da internet
-    urls = {
-        'producao': 'http://vitibrasil.cnpuv.embrapa.br/download/Producao.csv',
-        'processamento': 'http://vitibrasil.cnpuv.embrapa.br/download/ProcessaViniferas.csv',
-        'comercio': 'http://vitibrasil.cnpuv.embrapa.br/download/Comercio.csv',
-        'importacao': 'http://vitibrasil.cnpuv.embrapa.br/download/ImpVinhos.csv',
-        'exportacao': 'http://vitibrasil.cnpuv.embrapa.br/download/ExpVinho.csv'
+    # Configuração dos datasets
+    datasets = {
+        'producao': {
+            'url': 'http://vitibrasil.cnpuv.embrapa.br/download/Producao.csv',
+            'columns_to_drop': ['control', 'id'],
+            'nome_coluna': 'produto',
+            'coluna_grupo': 'Tipo',
+            'delimitador': ';',
+            'codificacao': 'utf-8',
+            'special_processing': None
+        },
+        'processamento': {
+            'url': 'http://vitibrasil.cnpuv.embrapa.br/download/ProcessaViniferas.csv',
+            'columns_to_drop': ['control', 'id'],
+            'nome_coluna': 'cultivar',
+            'coluna_grupo': 'Tipo',
+            'delimitador': ';',
+            'codificacao': 'utf-8',
+            'special_processing': None
+        },
+        'comercio': {
+            'url': 'http://vitibrasil.cnpuv.embrapa.br/download/Comercio.csv',
+            'columns_to_drop': ['control', 'id'],
+            'nome_coluna': 'Produto',
+            'coluna_grupo': 'Tipo',
+            'delimitador': ';',
+            'codificacao': 'utf-8',
+            'special_processing': 'comercio_outros_vinhos'
+        },
+        'importacao': {
+            'url': 'http://vitibrasil.cnpuv.embrapa.br/download/ImpVinhos.csv',
+            'columns_to_drop': [],
+            'nome_coluna': None,
+            'coluna_grupo': None,
+            'delimitador': ';',
+            'codificacao': 'utf-8',
+            'special_processing': 'importacao_exportacao'
+        },
+        'exportacao': {
+            'url': 'http://vitibrasil.cnpuv.embrapa.br/download/ExpVinho.csv',
+            'columns_to_drop': [],
+            'nome_coluna': None,
+            'coluna_grupo': None,
+            'delimitador': ';',
+            'codificacao': 'utf-8',
+            'special_processing': 'importacao_exportacao'
+        }
     }
 
     # Definir o caminho onde os dados serão salvos
     caminho_saida = './techchallenge/vitivinicultura/data/'
 
-    # Instanciação e execução
-    sanitizadores = {
-        'producao': SanitizadorProducao(urls['producao'], caminho_saida),
-        'processamento': SanitizadorProcessamento(urls['processamento'], caminho_saida),
-        'comercio': SanitizadorComercio(urls['comercio'], caminho_saida),
-        'importacao': SanitizadorImportacaoExportacao(urls['importacao'], caminho_saida),
-        'exportacao': SanitizadorImportacaoExportacao(urls['exportacao'], caminho_saida),
-    }
-
-    # Sanitização e salvamento dos dados
-    for chave, sanitizador in sanitizadores.items():
+    for chave, config in datasets.items():
+        config['caminho_saida'] = caminho_saida
         try:
             logger.info(f"\nIniciando processamento para: {chave}")
+            sanitizador = SanitizadorDataset(config)
             sanitizador.baixar_e_carregar_csv()
-
-            if chave in ['producao', 'processamento', 'comercio']:
-                df_sanitizado = sanitizador.sanitizar()
-                sanitizador.salvar_csv(df_sanitizado, f'{chave}_sanitizado.csv')
-                sanitizador.salvar_json(df_sanitizado, f'{chave}_sanitizado.json')
-            else:  # 'importacao' e 'exportacao'
-                dados_json = sanitizador.sanitizar()
-                sanitizador.salvar_dados_json(dados_json, f'{chave}_sanitizado.json')
+            df_sanitizado = sanitizador.sanitizar()
+            sanitizador.salvar_csv(df_sanitizado, f'{chave}_sanitizado.csv')
+            sanitizador.salvar_json(df_sanitizado, f'{chave}_sanitizado.json')
         except Exception as e:
             logger.error(f"Erro ao processar {chave}: {e}")
 
