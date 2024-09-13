@@ -2177,11 +2177,6 @@
     ],
     "Bermudas": [
         {
-            "ano": 1970,
-            "quantidade": 0,
-            "valor_usd": NaN
-        },
-        {
             "ano": 1971,
             "quantidade": 0,
             "valor_usd": 0
