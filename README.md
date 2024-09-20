@@ -9,3 +9,15 @@ FIAP TECH CHALLENGE
 
   -- Criar branch com prefixo ˜infra/*˜
 
+
+
+# RUN APP
+
+-- Docker build
+    docker build -f techchallenge .
+
+-- Docker run
+    docker run -p 8000:8000 techchallenge 
+
+-- Acesso
+    http://localhost:8000
