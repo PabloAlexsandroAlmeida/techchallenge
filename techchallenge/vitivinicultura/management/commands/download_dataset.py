@@ -5,6 +5,7 @@ import pandas as pd
 from io import StringIO
 import logging
 from typing import Dict, Any, Union
+from django.core.management.base import BaseCommand
 
 # Configurar o logging
 logging.basicConfig(level=logging.INFO)
@@ -205,71 +206,70 @@ class SanitizadorDataset:
             raise
 
 
-def main():
-    # Configuração dos datasets
-    datasets = {
-        "producao": {
-            "url": "http://vitibrasil.cnpuv.embrapa.br/download/Producao.csv",
-            "columns_to_drop": ["control", "id"],
-            "nome_coluna": "produto",
-            "coluna_grupo": "Tipo",
-            "delimitador": ";",
-            "codificacao": "utf-8",
-            "special_processing": None,
-        },
-        "processamento": {
-            "url": "http://vitibrasil.cnpuv.embrapa.br/download/ProcessaViniferas.csv",
-            "columns_to_drop": ["control", "id"],
-            "nome_coluna": "cultivar",
-            "coluna_grupo": "Tipo",
-            "delimitador": ";",
-            "codificacao": "utf-8",
-            "special_processing": None,
-        },
-        "comercio": {
-            "url": "http://vitibrasil.cnpuv.embrapa.br/download/Comercio.csv",
-            "columns_to_drop": ["control", "id"],
-            "nome_coluna": "Produto",
-            "coluna_grupo": "Tipo",
-            "delimitador": ";",
-            "codificacao": "utf-8",
-            "special_processing": "comercio_outros_vinhos",
-        },
-        "importacao": {
-            "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpVinhos.csv",
-            "columns_to_drop": [],
-            "nome_coluna": None,
-            "coluna_grupo": None,
-            "delimitador": ";",
-            "codificacao": "utf-8",
-            "special_processing": "importacao_exportacao",
-        },
-        "exportacao": {
-            "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpVinho.csv",
-            "columns_to_drop": [],
-            "nome_coluna": None,
-            "coluna_grupo": None,
-            "delimitador": ";",
-            "codificacao": "utf-8",
-            "special_processing": "importacao_exportacao",
-        },
-    }
+class Command(BaseCommand):
+    help = 'Sanitiza datasets de vinhos'
 
-    # Definir o caminho onde os dados serão salvos
-    caminho_saida = "./techchallenge/vitivinicultura/data/"
+    def handle(self, *args, **options):
+        # Configuração dos datasets
+        datasets = {
+            "producao": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/Producao.csv",
+                "columns_to_drop": ["control", "id"],
+                "nome_coluna": "produto",
+                "coluna_grupo": "Tipo",
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": None,
+            },
+            "processamento": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ProcessaViniferas.csv",
+                "columns_to_drop": ["control", "id"],
+                "nome_coluna": "cultivar",
+                "coluna_grupo": "Tipo",
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": None,
+            },
+            "comercio": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/Comercio.csv",
+                "columns_to_drop": ["control", "id"],
+                "nome_coluna": "Produto",
+                "coluna_grupo": "Tipo",
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "comercio_outros_vinhos",
+            },
+            "importacao": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpVinhos.csv",
+                "columns_to_drop": [],
+                "nome_coluna": None,
+                "coluna_grupo": None,
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+            },
+            "exportacao": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpVinho.csv",
+                "columns_to_drop": [],
+                "nome_coluna": None,
+                "coluna_grupo": None,
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+            },
+        }
 
-    for chave, config in datasets.items():
-        config["caminho_saida"] = caminho_saida
-        try:
-            logger.info(f"\nIniciando processamento para: {chave}")
-            sanitizador = SanitizadorDataset(config)
-            sanitizador.baixar_e_carregar_csv()
-            df_sanitizado = sanitizador.sanitizar()
-            sanitizador.salvar_csv(df_sanitizado, f"{chave}_sanitizado.csv")
-            sanitizador.salvar_json(df_sanitizado, f"{chave}_sanitizado.json")
-        except Exception as e:
-            logger.error(f"Erro ao processar {chave}: {e}")
+        # Definir o caminho onde os dados serão salvos
+        caminho_saida = "./techchallenge/vitivinicultura/data/"
 
-
-if __name__ == "__main__":
-    main()
+        for chave, config in datasets.items():
+            config["caminho_saida"] = caminho_saida
+            try:
+                logger.info(f"\nIniciando processamento para: {chave}")
+                sanitizador = SanitizadorDataset(config)
+                sanitizador.baixar_e_carregar_csv()
+                df_sanitizado = sanitizador.sanitizar()
+                sanitizador.salvar_csv(df_sanitizado, f"{chave}_sanitizado.csv")
+                sanitizador.salvar_json(df_sanitizado, f"{chave}_sanitizado.json")
+            except Exception as e:
+                logger.error(f"Erro ao processar {chave}: {e}")

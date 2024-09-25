@@ -22,6 +22,8 @@ COPY . /app/
 EXPOSE 8000
 
 RUN python manage.py collectstatic --noinput
+RUN python manage.py download_dataset
+RUN python manage.py import_dataset
 
 ENV DJANGO_SETTINGS_MODULE=techchallenge.settings
 ENV PYTHONUNBUFFERED=1

@@ -6,7 +6,6 @@ from vitivinicultura.models import Producao, Comercio, Processamento, Exportacao
 
 # Função para carregar JSON do diretório data
 def load_json(file_name):
-    # Corrige o caminho para garantir que ele seja absoluto
     file_path = os.path.join(settings.BASE_DIR, 'vitivinicultura', 'data', file_name)
     with open(file_path, 'r') as f:
         return json.load(f)
