@@ -72,6 +72,10 @@ def import_data(
         ano_valor_field_name (str): Nome do campo relacionado em AnoValor.
     """
     with transaction.atomic():
+        # Limpa todos os registros existentes no modelo e em AnoValor relacionado
+        AnoValor.objects.filter(**{ano_valor_field_name + '__isnull': False}).delete()
+        model.objects.all().delete()
+
         for item in data:
             # Normaliza as chaves para minúsculas
             item_normalized = {k.lower(): v for k, v in item.items()}
