@@ -1,51 +1,123 @@
 from rest_framework import serializers
-from .models import Producao, Comercio, Processamento, Exportacao, Importacao, AnoValor
+from .models import (
+    Producao,
+    Comercio,
+    Processamento,
+    Exportacao,
+    Importacao,
+    AnoValor,
+    Pais,
+)
 
-# Definindo primeiro o AnoValorSerializer, pois será usado nos outros serializers
+
+# Serializer para o modelo AnoValor, que representa valores por ano associados aos modelos principais.
 class AnoValorSerializer(serializers.ModelSerializer):
-    producao = serializers.StringRelatedField(read_only=True)
-    comercio = serializers.StringRelatedField(read_only=True)
-    processamento = serializers.StringRelatedField(read_only=True)
-    exportacao = serializers.StringRelatedField(read_only=True)
-    importacao = serializers.StringRelatedField(read_only=True)
+    """
+    Serializer para o modelo AnoValor.
+
+    Representa os valores associados a um ano específico.
+    """
 
     class Meta:
         model = AnoValor
-        fields = ['ano', 'valor', 'producao', 'comercio', 'processamento', 'exportacao', 'importacao']
+        fields = ["ano", "valor", "tipo_valor"]
 
-# Agora, podemos definir o ProducaoSerializer, que depende do AnoValorSerializer
-class ProducaoSerializer(serializers.ModelSerializer):
-    valores = AnoValorSerializer(source='anovalor_set', many=True, read_only=True)
+
+# Serializer para o modelo Pais, utilizado em Importacao e Exportacao.
+class PaisSerializer(serializers.ModelSerializer):
+    """
+    Serializer para o modelo Pais.
+    """
 
     class Meta:
+        model = Pais
+        fields = ["nome"]
+
+
+# Serializer base para modelos que possuem 'produto' e 'tipo' como campos.
+class ProdutoTipoSerializer(serializers.ModelSerializer):
+    """
+    Serializer base para modelos com campos 'produto' e 'tipo'.
+
+    Inclui os valores associados a cada ano.
+    """
+
+    valores = AnoValorSerializer(source="anos_valores", many=True, read_only=True)
+
+    class Meta:
+        fields = ["produto", "tipo", "valores"]
+
+
+# Serializer para Producao, incluindo valores por ano.
+class ProducaoSerializer(ProdutoTipoSerializer):
+    """
+    Serializer para o modelo Producao.
+
+    Herda de ProdutoTipoSerializer.
+    """
+
+    class Meta(ProdutoTipoSerializer.Meta):
         model = Producao
-        fields = ['produto', 'tipo', 'valores']
 
-# Da mesma forma, para os outros serializers
-class ComercioSerializer(serializers.ModelSerializer):
-    valores = AnoValorSerializer(source='anovalor_set', many=True, read_only=True)
 
-    class Meta:
+# Serializer para Comercio, incluindo valores por ano.
+class ComercioSerializer(ProdutoTipoSerializer):
+    """
+    Serializer para o modelo Comercio.
+
+    Herda de ProdutoTipoSerializer.
+    """
+
+    class Meta(ProdutoTipoSerializer.Meta):
         model = Comercio
-        fields = ['produto', 'tipo', 'valores']
 
-class ProcessamentoSerializer(serializers.ModelSerializer):
-    valores = AnoValorSerializer(source='anovalor_set', many=True, read_only=True)
 
-    class Meta:
+# Serializer para Processamento, incluindo valores por ano.
+class ProcessamentoSerializer(ProdutoTipoSerializer):
+    """
+    Serializer para o modelo Processamento.
+
+    Herda de ProdutoTipoSerializer.
+    """
+
+    class Meta(ProdutoTipoSerializer.Meta):
         model = Processamento
-        fields = ['produto', 'tipo', 'valores']
 
-class ExportacaoSerializer(serializers.ModelSerializer):
-    valores = AnoValorSerializer(source='anovalor_set', many=True, read_only=True)
+
+# Serializer base para modelos que possuem o campo 'pais'.
+class PaisRelatedSerializer(serializers.ModelSerializer):
+    """
+    Serializer base para modelos com campo 'pais'.
+
+    Inclui os valores associados a cada ano.
+    """
+
+    pais = PaisSerializer(read_only=True)
+    valores = AnoValorSerializer(source="anos_valores", many=True, read_only=True)
 
     class Meta:
+        fields = ["pais", "valores"]
+
+
+# Serializer para Exportacao, incluindo valores por ano.
+class ExportacaoSerializer(PaisRelatedSerializer):
+    """
+    Serializer para o modelo Exportacao.
+
+    Herda de PaisRelatedSerializer.
+    """
+
+    class Meta(PaisRelatedSerializer.Meta):
         model = Exportacao
-        fields = ['pais', 'valores']
 
-class ImportacaoSerializer(serializers.ModelSerializer):
-    valores = AnoValorSerializer(source='anovalor_set', many=True, read_only=True)
 
-    class Meta:
+# Serializer para Importacao, incluindo valores por ano.
+class ImportacaoSerializer(PaisRelatedSerializer):
+    """
+    Serializer para o modelo Importacao.
+
+    Herda de PaisRelatedSerializer.
+    """
+
+    class Meta(PaisRelatedSerializer.Meta):
         model = Importacao
-        fields = ['pais', 'valores']
