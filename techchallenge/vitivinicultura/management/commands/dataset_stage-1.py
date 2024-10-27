@@ -4,34 +4,56 @@ import requests
 import pandas as pd
 from io import StringIO
 import logging
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, List, Optional
 from django.core.management.base import BaseCommand
 
-# Configurar o logging
+# Configuração do logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class SanitizadorDataset:
-    def __init__(self, config):
-        """
-        Classe base para sanitização de datasets.
+    """
+    Classe base para sanitização de datasets.
 
-        :param config: Dicionário com a configuração do dataset.
-        """
-        self.url = config.get("url")
-        self.caminho_saida = config.get("caminho_saida", ".")
-        self.delimitador = config.get("delimitador", ";")
-        self.codificacao = config.get("codificacao", "utf-8")
-        self.columns_to_drop = config.get("columns_to_drop", [])
-        self.nome_coluna = config.get("nome_coluna")
-        self.coluna_grupo = config.get("coluna_grupo", "Tipo")
-        self.special_processing = config.get("special_processing")
-        self.df = None
+    Esta classe fornece métodos para baixar, carregar, sanitizar e salvar datasets
+    provenientes de URLs especificadas.
 
-    def baixar_e_carregar_csv(self):
+    Attributes:
+        url (str): URL do dataset a ser baixado.
+        caminho_saida (str): Caminho onde o dataset será salvo.
+        delimitador (str): Delimitador usado no arquivo CSV.
+        codificacao (str): Codificação do arquivo CSV.
+        columns_to_drop (List[str]): Lista de colunas a serem removidas do dataset.
+        nome_coluna (Optional[str]): Nome da coluna para verificar cabeçalhos de grupo em maiúsculas.
+        coluna_grupo (str): Nome da nova coluna de grupo a ser adicionada.
+        special_processing (Optional[str]): Indica se é necessário um processamento especial para o dataset.
+        df (Optional[pd.DataFrame]): DataFrame pandas contendo o dataset carregado.
+    """
+
+    def __init__(self, config: Dict[str, Any]) -> None:
+        """
+        Inicializa a classe SanitizadorDataset com as configurações fornecidas.
+
+        Args:
+            config (Dict[str, Any]): Dicionário com a configuração do dataset.
+        """
+        self.url: str = config.get("url")
+        self.caminho_saida: str = config.get("caminho_saida", ".")
+        self.delimitador: str = config.get("delimitador", ";")
+        self.codificacao: str = config.get("codificacao", "utf-8")
+        self.columns_to_drop: List[str] = config.get("columns_to_drop", [])
+        self.nome_coluna: Optional[str] = config.get("nome_coluna")
+        self.coluna_grupo: str = config.get("coluna_grupo", "Tipo")
+        self.special_processing: Optional[str] = config.get("special_processing")
+        self.df: Optional[pd.DataFrame] = None
+
+    def baixar_e_carregar_csv(self) -> None:
         """
         Baixa um arquivo CSV da URL fornecida e carrega em um DataFrame pandas.
+
+        Raises:
+            Exception: Se ocorrer um erro ao baixar ou carregar o arquivo.
         """
         try:
             logger.info(f"Baixando arquivo de: {self.url}")
@@ -59,16 +81,26 @@ class SanitizadorDataset:
             # Carregar o CSV usando a string decodificada
             self.df = pd.read_csv(StringIO(dados_csv), delimiter=self.delimitador)
             logger.info(f"Arquivo baixado e carregado com sucesso: {self.url}")
+        except requests.RequestException as e:
+            logger.error(f"Erro ao baixar o arquivo de {self.url}: {e}")
+            raise
+        except UnicodeDecodeError as e:
+            logger.error(f"Erro de decodificação ao processar o arquivo: {e}")
+            raise
         except Exception as e:
-            logger.error(f"Erro ao baixar ou carregar o arquivo de {self.url}: {e}")
+            logger.error(f"Erro ao carregar o arquivo CSV: {e}")
             raise
 
     def salvar_csv(self, df_sanitizado: pd.DataFrame, nome_arquivo: str) -> None:
         """
         Salva o DataFrame sanitizado em um arquivo CSV.
 
-        :param df_sanitizado: O DataFrame pandas sanitizado.
-        :param nome_arquivo: O nome do arquivo para salvar o CSV.
+        Args:
+            df_sanitizado (pd.DataFrame): O DataFrame pandas sanitizado.
+            nome_arquivo (str): O nome do arquivo para salvar o CSV.
+
+        Raises:
+            Exception: Se ocorrer um erro ao salvar o arquivo CSV.
         """
         try:
             caminho_saida = os.path.join(self.caminho_saida, nome_arquivo)
@@ -84,8 +116,12 @@ class SanitizadorDataset:
         """
         Salva os dados sanitizados em um arquivo JSON.
 
-        :param dados: Os dados sanitizados como um DataFrame pandas ou um dicionário.
-        :param nome_arquivo: O nome do arquivo para salvar o JSON.
+        Args:
+            dados (Union[pd.DataFrame, Dict[Any, Any]]): Os dados sanitizados como um DataFrame pandas ou um dicionário.
+            nome_arquivo (str): O nome do arquivo para salvar o JSON.
+
+        Raises:
+            Exception: Se ocorrer um erro ao salvar o arquivo JSON.
         """
         try:
             caminho_saida = os.path.join(self.caminho_saida, nome_arquivo)
@@ -99,20 +135,29 @@ class SanitizadorDataset:
             logger.error(f"Erro ao salvar o arquivo JSON sanitizado: {e}")
             raise
 
-    def sanitizar(self):
+    def sanitizar(self) -> pd.DataFrame:
         """
         Sanitiza o dataset com base nas configurações fornecidas.
+
+        Returns:
+            pd.DataFrame: O DataFrame pandas sanitizado.
+
+        Raises:
+            Exception: Se ocorrer um erro durante a sanitização.
         """
         try:
             logger.info("Iniciando sanitização do arquivo")
             if self.columns_to_drop:
                 self.df = self.df.drop(columns=self.columns_to_drop)
+                logger.debug(f"Colunas removidas: {self.columns_to_drop}")
+
             if self.special_processing == "importacao_exportacao":
                 self._sanitizar_importacao_exportacao()
             else:
                 df_sanitizado = self._sanitizar_grupos_maiusculos(
                     nome_coluna=self.nome_coluna, coluna_grupo=self.coluna_grupo
                 )
+
                 if self.special_processing == "comercio_outros_vinhos":
                     # Processamento especial para 'Comercio'
                     df_sanitizado["Produto"] = df_sanitizado["Produto"].str.strip()
@@ -125,6 +170,7 @@ class SanitizadorDataset:
                         indice_inicio = indices_outros[0]
                         df_sanitizado.loc[indice_inicio:, "Tipo"] = "OUTROS"
                 self.df = df_sanitizado
+
             logger.info("Sanitização concluída")
             return self.df
         except Exception as e:
@@ -137,9 +183,12 @@ class SanitizadorDataset:
         """
         Sanitiza um DataFrame agrupando linhas com base em entradas maiúsculas em uma coluna especificada.
 
-        :param nome_coluna: O nome da coluna para verificar cabeçalhos de grupo em maiúsculas.
-        :param coluna_grupo: O nome da nova coluna de grupo a ser adicionada.
-        :return: DataFrame pandas sanitizado.
+        Args:
+            nome_coluna (str): O nome da coluna para verificar cabeçalhos de grupo em maiúsculas.
+            coluna_grupo (str, optional): O nome da nova coluna de grupo a ser adicionada. Default "Tipo".
+
+        Returns:
+            pd.DataFrame: DataFrame pandas sanitizado.
         """
         self.df = self.df.copy()
         # Inicializa a coluna de grupo
@@ -160,11 +209,15 @@ class SanitizadorDataset:
         # Reseta o índice e insere a coluna 'id'
         df_sanitizado = df_sanitizado.reset_index(drop=True)
         df_sanitizado.insert(0, "id", df_sanitizado.index + 1)
+        logger.debug(f"DataFrame sanitizado:\n{df_sanitizado.head()}")
         return df_sanitizado
 
-    def _sanitizar_importacao_exportacao(self):
+    def _sanitizar_importacao_exportacao(self) -> None:
         """
         Sanitiza datasets de Importação e Exportação transformando-os em formato longo.
+
+        Raises:
+            Exception: Se ocorrer um erro durante a sanitização específica.
         """
         try:
             registros = []
@@ -196,6 +249,9 @@ class SanitizadorDataset:
 
             df_sanitizado = pd.DataFrame(registros)
             self.df = df_sanitizado
+            logger.debug(
+                f"DataFrame sanitizado de importação/exportação:\n{df_sanitizado.head()}"
+            )
         except KeyError as e:
             logger.error(
                 f"Erro: coluna não encontrada. Verifique se a coluna 'País' ou as colunas de anos estão corretas: {e}"
@@ -207,9 +263,20 @@ class SanitizadorDataset:
 
 
 class Command(BaseCommand):
-    help = 'Sanitiza datasets de vinhos'
+    """
+    Comando customizado do Django para download dos datasets e tratamento inicial.
 
-    def handle(self, *args, **options):
+    Este comando baixa os datasets especificados, realiza a sanitização e os salva em formatos CSV e JSON.
+    """
+
+    help = "Dataset Stage 1: Baixa e sanitiza os datasets iniciais"
+
+    def handle(self, *args, **options) -> None:
+        """
+        Método principal que é executado quando o comando é chamado.
+
+        Processa cada dataset conforme a configuração especificada.
+        """
         # Configuração dos datasets
         datasets = {
             "producao": {
