@@ -1,164 +1,107 @@
 from django.db import models
 
-
 class BaseModel(models.Model):
     """
     Modelo base abstrato para fornecer funcionalidades comuns a outros modelos.
-
-    Este modelo não será criado no banco de dados, mas servirá como base
-    para outros modelos que herdam dele.
     """
-
     class Meta:
         abstract = True
 
 
-class ProdutoTipoModel(BaseModel):
+class Produto(models.Model):
     """
-    Modelo abstrato que inclui os campos 'produto' e 'tipo'.
-
-    Este modelo é destinado a ser herdado por outros modelos que compartilham
-    esses campos, evitando duplicação de código.
+    Modelo que representa um produto e seu tipo.
     """
-
-    produto = models.CharField(max_length=100, default="produto_desconhecido")
-    tipo = models.CharField(max_length=100, default="tipo_desconhecido")
+    nome = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=100)
 
     class Meta:
-        abstract = True
+        unique_together = ('nome', 'tipo')
+        verbose_name_plural = "Produtos"
 
-
-class Producao(ProdutoTipoModel):
-    """
-    Modelo que representa os dados de produção.
-
-    Herda de ProdutoTipoModel e pode incluir campos adicionais específicos
-    para a produção.
-    """
-
-    # Adicione outros campos específicos para Producao, se necessário
-
-    def __str__(self) -> str:
-        return f"Produção - {self.produto} ({self.tipo})"
-
-
-class Comercio(ProdutoTipoModel):
-    """
-    Modelo que representa os dados de comércio.
-
-    Herda de ProdutoTipoModel e pode incluir campos adicionais específicos
-    para o comércio.
-    """
-
-    # Adicione outros campos específicos para Comercio, se necessário
-
-    def __str__(self) -> str:
-        return f"Comércio - {self.produto} ({self.tipo})"
-
-
-class Processamento(ProdutoTipoModel):
-    """
-    Modelo que representa os dados de processamento.
-
-    Herda de ProdutoTipoModel e pode incluir campos adicionais específicos
-    para o processamento.
-    """
-
-    # Adicione outros campos específicos para Processamento, se necessário
-
-    def __str__(self) -> str:
-        return f"Processamento - {self.produto} ({self.tipo})"
+    def __str__(self):
+        return f"{self.nome} - {self.tipo}"
 
 
 class Pais(models.Model):
     """
     Modelo que representa um país.
-
-    Este modelo é usado para relacionar países com importações e exportações.
     """
-
     nome = models.CharField(max_length=100, unique=True)
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.nome
+
+
+class Ano(models.Model):
+    """
+    Modelo que representa um ano específico.
+    """
+    ano = models.IntegerField(unique=True)
+
+    def __str__(self):
+        return str(self.ano)
+
+
+class Producao(models.Model):
+    """
+    Modelo que representa os dados de produção.
+    """
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="producoes")
+    ano = models.ForeignKey(Ano, on_delete=models.CASCADE, related_name="producoes", default=2020)  
+    quantidade = models.FloatField(default=0.0)  
+
+    def __str__(self):
+        return f"Produção de {self.produto} em {self.ano}"
+
+
+class Comercializacao(models.Model):
+    """
+    Modelo que representa os dados de comercialização.
+    """
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="comercializacoes")
+    ano = models.ForeignKey(Ano, on_delete=models.CASCADE, related_name="comercializacoes", default=2020)  
+    quantidade = models.FloatField(default=0.0)  
+
+    def __str__(self):
+        return f"Comercialização de {self.produto} em {self.ano}"
+
+
+class Processamento(models.Model):
+    """
+    Modelo que representa os dados de processamento.
+    """
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="processamentos")
+    ano = models.ForeignKey(Ano, on_delete=models.CASCADE, related_name="processamentos", default=2020)  
+    quantidade = models.FloatField(default=0.0)  
+
+    def __str__(self):
+        return f"Processamento de {self.produto} em {self.ano}"
 
 
 class Importacao(models.Model):
     """
     Modelo que representa os dados de importação.
-
-    Relaciona-se com o modelo Pais através de uma chave estrangeira.
     """
-
     pais = models.ForeignKey(Pais, on_delete=models.CASCADE, related_name="importacoes")
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="importacoes")
+    ano = models.ForeignKey(Ano, on_delete=models.CASCADE, related_name="importacoes", default=2020)  
+    quantidade = models.FloatField(default=0.0)  
+    valor = models.FloatField(default=0.0)  
 
-    def __str__(self) -> str:
-        return f"Importação de {self.pais.nome}"
+    def __str__(self):
+        return f"Importação de {self.produto} de {self.pais} em {self.ano}"
 
 
 class Exportacao(models.Model):
     """
     Modelo que representa os dados de exportação.
-
-    Relaciona-se com o modelo Pais através de uma chave estrangeira.
     """
-
     pais = models.ForeignKey(Pais, on_delete=models.CASCADE, related_name="exportacoes")
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="exportacoes")
+    ano = models.ForeignKey(Ano, on_delete=models.CASCADE, related_name="exportacoes", default=2020)  
+    quantidade = models.FloatField(default=0.0)  
+    valor = models.FloatField(default=0.0)  
 
-    def __str__(self) -> str:
-        return f"Exportação para {self.pais.nome}"
-
-
-class AnoValor(models.Model):
-    """
-    Modelo para armazenar os valores por ano de cada tipo de dados.
-
-    Este modelo permite registrar valores (como quantidade ou valor monetário)
-    associados a um ano específico e relacionados a um dos modelos principais.
-    """
-
-    producao = models.ForeignKey(
-        Producao,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="anos_valores",
-    )
-    comercio = models.ForeignKey(
-        Comercio,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="anos_valores",
-    )
-    processamento = models.ForeignKey(
-        Processamento,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="anos_valores",
-    )
-    exportacao = models.ForeignKey(
-        Exportacao,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="anos_valores",
-    )
-    importacao = models.ForeignKey(
-        Importacao,
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="anos_valores",
-    )
-    ano = models.IntegerField()  # O ano deve ser explicitamente definido
-    valor = models.FloatField(default=0.0)
-    tipo_valor = models.CharField(max_length=50, default="valor")
-
-    def __str__(self) -> str:
-        return f"{self.ano}: {self.valor}"
-
-    class Meta:
-        verbose_name = "Ano e Valor"
-        verbose_name_plural = "Anos e Valores"
+    def __str__(self):
+        return f"Exportação de {self.produto} para {self.pais} em {self.ano}"

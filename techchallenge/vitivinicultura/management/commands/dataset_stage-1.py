@@ -28,6 +28,7 @@ class SanitizadorDataset:
         nome_coluna (Optional[str]): Nome da coluna para verificar cabeçalhos de grupo em maiúsculas.
         coluna_grupo (str): Nome da nova coluna de grupo a ser adicionada.
         special_processing (Optional[str]): Indica se é necessário um processamento especial para o dataset.
+        produto (Optional[str]): Nome do produto a ser adicionado ao dataset, se especificado.
         df (Optional[pd.DataFrame]): DataFrame pandas contendo o dataset carregado.
     """
 
@@ -46,6 +47,7 @@ class SanitizadorDataset:
         self.nome_coluna: Optional[str] = config.get("nome_coluna")
         self.coluna_grupo: str = config.get("coluna_grupo", "Tipo")
         self.special_processing: Optional[str] = config.get("special_processing")
+        self.produto: Optional[str] = config.get("produto")
         self.df: Optional[pd.DataFrame] = None
 
     def baixar_e_carregar_csv(self) -> None:
@@ -151,24 +153,16 @@ class SanitizadorDataset:
                 self.df = self.df.drop(columns=self.columns_to_drop)
                 logger.debug(f"Colunas removidas: {self.columns_to_drop}")
 
+            # Adiciona o campo 'produto' se especificado na configuração
+            if self.produto:
+                self.df["produto"] = self.produto
+
             if self.special_processing == "importacao_exportacao":
                 self._sanitizar_importacao_exportacao()
             else:
                 df_sanitizado = self._sanitizar_grupos_maiusculos(
                     nome_coluna=self.nome_coluna, coluna_grupo=self.coluna_grupo
                 )
-
-                if self.special_processing == "comercio_outros_vinhos":
-                    # Processamento especial para 'Comercio'
-                    df_sanitizado["Produto"] = df_sanitizado["Produto"].str.strip()
-                    indices_outros = df_sanitizado[
-                        df_sanitizado["Produto"].str.contains(
-                            "Outros vinhos", case=False, na=False
-                        )
-                    ].index
-                    if not indices_outros.empty:
-                        indice_inicio = indices_outros[0]
-                        df_sanitizado.loc[indice_inicio:, "Tipo"] = "OUTROS"
                 self.df = df_sanitizado
 
             logger.info("Sanitização concluída")
@@ -191,9 +185,7 @@ class SanitizadorDataset:
             pd.DataFrame: DataFrame pandas sanitizado.
         """
         self.df = self.df.copy()
-        # Inicializa a coluna de grupo
         self.df[coluna_grupo] = None
-        # Remove espaços em branco
         self.df[nome_coluna] = self.df[nome_coluna].str.strip()
         tipo_atual = None
 
@@ -204,9 +196,7 @@ class SanitizadorDataset:
             else:
                 self.df.at[indice, coluna_grupo] = tipo_atual
 
-        # Filtra as linhas onde o valor da coluna não está em maiúsculas
         df_sanitizado = self.df[~self.df[nome_coluna].str.isupper()]
-        # Reseta o índice e insere a coluna 'id'
         df_sanitizado = df_sanitizado.reset_index(drop=True)
         df_sanitizado.insert(0, "id", df_sanitizado.index + 1)
         logger.debug(f"DataFrame sanitizado:\n{df_sanitizado.head()}")
@@ -221,8 +211,6 @@ class SanitizadorDataset:
         """
         try:
             registros = []
-
-            # Obter a lista de anos a partir das colunas
             colunas = self.df.columns
             colunas_anos = [
                 col
@@ -297,32 +285,79 @@ class Command(BaseCommand):
                 "codificacao": "utf-8",
                 "special_processing": None,
             },
-            "comercio": {
-                "url": "http://vitibrasil.cnpuv.embrapa.br/download/Comercio.csv",
-                "columns_to_drop": ["control", "id"],
-                "nome_coluna": "Produto",
-                "coluna_grupo": "Tipo",
-                "delimitador": ";",
-                "codificacao": "utf-8",
-                "special_processing": "comercio_outros_vinhos",
-            },
+            # Configurações para importação com campo 'produto'
             "importacao": {
                 "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpVinhos.csv",
                 "columns_to_drop": [],
-                "nome_coluna": None,
-                "coluna_grupo": None,
                 "delimitador": ";",
                 "codificacao": "utf-8",
                 "special_processing": "importacao_exportacao",
+                "produto": "Vinhos de Mesa",
             },
+            "importacao_espumantes": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpEspumantes.csv",
+                "columns_to_drop": [],
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Espumantes",
+            },
+            "importacao_frescas": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpFrescas.csv",
+                "columns_to_drop": [],
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Uvas Frescas",
+            },
+            "importacao_passas": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpPassas.csv",
+                "columns_to_drop": [],
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Uvas Passas",
+            },
+            "importacao_suco": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpSuco.csv",
+                "columns_to_drop": [],
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Suco de Uva",
+            },
+            # Configurações para exportação com campo 'produto'
             "exportacao": {
                 "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpVinho.csv",
                 "columns_to_drop": [],
-                "nome_coluna": None,
-                "coluna_grupo": None,
                 "delimitador": ";",
                 "codificacao": "utf-8",
                 "special_processing": "importacao_exportacao",
+                "produto": "Vinhos de Mesa",
+            },
+            "exportacao_espumantes": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpEspumantes.csv",
+                "columns_to_drop": [],
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Espumantes",
+            },
+            "exportacao_uva": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpUva.csv",
+                "columns_to_drop": [],
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Uvas Frescas",
+            },
+            "exportacao_suco": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpSuco.csv",
+                "columns_to_drop": [],
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Suco de Uva",
             },
         }
 
@@ -340,3 +375,4 @@ class Command(BaseCommand):
                 sanitizador.salvar_json(df_sanitizado, f"{chave}_sanitizado.json")
             except Exception as e:
                 logger.error(f"Erro ao processar {chave}: {e}")
+

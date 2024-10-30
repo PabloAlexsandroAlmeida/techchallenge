@@ -1,177 +1,111 @@
-from rest_framework import viewsets, filters
-from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, filters as drf_filters
+from django_filters import rest_framework as filters
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from .models import (
-    Producao,
-    Comercio,
-    Processamento,
-    Exportacao,
-    Importacao,
-    AnoValor,
-)
+from .models import Producao, Comercializacao, Processamento, Exportacao, Importacao, Ano
 from .serializers import (
     ProducaoSerializer,
-    ComercioSerializer,
+    ComercializacaoSerializer,  # Corrigido de ComercioSerializer para ComercializacaoSerializer
     ProcessamentoSerializer,
     ExportacaoSerializer,
     ImportacaoSerializer,
-    AnoValorSerializer,
+    AnoSerializer,
 )
 
-"""
-Módulo de visualizações para a aplicação vitivinicultura.
-
-Este módulo define os ViewSets para cada modelo, fornecendo endpoints
-RESTful usando o Django REST Framework. Inclui capacidades de filtragem,
-pesquisa e ordenação.
-"""
-
-
 class BaseModelViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet base para modelos.
-
-    Fornece permissões e backends de filtragem padrão.
-    """
-
+    """Base para ViewSets com permissões e filtros padrão."""
     permission_classes = [IsAuthenticatedOrReadOnly]
-    filter_backends = [
-        DjangoFilterBackend,
-        filters.SearchFilter,
-        filters.OrderingFilter,
-    ]
+    filter_backends = [filters.DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
 
+# Filtro e ViewSet para Produção
+class ProducaoFilter(filters.FilterSet):
+    ano_min = filters.NumberFilter(field_name="ano__ano", lookup_expr='gte')
+    ano_max = filters.NumberFilter(field_name="ano__ano", lookup_expr='lte')
+    quantidade_min = filters.NumberFilter(field_name="quantidade", lookup_expr='gte')
+    quantidade_max = filters.NumberFilter(field_name="quantidade", lookup_expr='lte')
+    produto = filters.CharFilter(field_name="produto__nome", lookup_expr='icontains')
 
-class ProdutoTipoViewSet(BaseModelViewSet):
-    """
-    ViewSet base para modelos com campos 'produto' e 'tipo'.
+    class Meta:
+        model = Producao
+        fields = ['produto', 'ano_min', 'ano_max', 'quantidade_min', 'quantidade_max']
 
-    Define campos padrão para filtragem, pesquisa e ordenação.
-    """
-
-    filterset_fields = ["produto", "tipo"]
-    search_fields = ["produto", "tipo"]
-    ordering_fields = ["produto", "tipo"]
-
-
-class PaisViewSet(BaseModelViewSet):
-    """
-    ViewSet base para modelos com campo 'pais'.
-
-    Define campos padrão para filtragem, pesquisa e ordenação.
-    """
-
-    filterset_fields = ["pais__nome"]
-    search_fields = ["pais__nome"]
-    ordering_fields = ["pais__nome"]
-
-
-class ProducaoViewSet(ProdutoTipoViewSet):
-    """
-    ViewSet para o modelo Producao.
-
-    Fornece ações padrão de listagem, criação, recuperação,
-    atualização e exclusão.
-    """
-
+class ProducaoViewSet(BaseModelViewSet):
     queryset = Producao.objects.all()
     serializer_class = ProducaoSerializer
+    filterset_class = ProducaoFilter
 
+# Filtro e ViewSet para Comercialização (antigo Comercio)
+class ComercializacaoFilter(filters.FilterSet):
+    ano_min = filters.NumberFilter(field_name="ano__ano", lookup_expr='gte')
+    ano_max = filters.NumberFilter(field_name="ano__ano", lookup_expr='lte')
+    quantidade_min = filters.NumberFilter(field_name="quantidade", lookup_expr='gte')
+    quantidade_max = filters.NumberFilter(field_name="quantidade", lookup_expr='lte')
+    produto = filters.CharFilter(field_name="produto__nome", lookup_expr='icontains')
 
-class ComercioViewSet(ProdutoTipoViewSet):
-    """
-    ViewSet para o modelo Comercio.
+    class Meta:
+        model = Comercializacao
+        fields = ['produto', 'ano_min', 'ano_max', 'quantidade_min', 'quantidade_max']
 
-    Herda configurações padrão de ProdutoTipoViewSet.
-    """
+class ComercializacaoViewSet(BaseModelViewSet):
+    queryset = Comercializacao.objects.all()
+    serializer_class = ComercializacaoSerializer
+    filterset_class = ComercializacaoFilter
 
-    queryset = Comercio.objects.all()
-    serializer_class = ComercioSerializer
+# Filtro e ViewSet para Processamento
+class ProcessamentoFilter(filters.FilterSet):
+    ano_min = filters.NumberFilter(field_name="ano__ano", lookup_expr='gte')
+    ano_max = filters.NumberFilter(field_name="ano__ano", lookup_expr='lte')
+    quantidade_min = filters.NumberFilter(field_name="quantidade", lookup_expr='gte')
+    quantidade_max = filters.NumberFilter(field_name="quantidade", lookup_expr='lte')
+    produto = filters.CharFilter(field_name="produto__nome", lookup_expr='icontains')
 
+    class Meta:
+        model = Processamento
+        fields = ['produto', 'ano_min', 'ano_max', 'quantidade_min', 'quantidade_max']
 
-class ProcessamentoViewSet(ProdutoTipoViewSet):
-    """
-    ViewSet para o modelo Processamento.
-
-    Herda configurações padrão de ProdutoTipoViewSet.
-    """
-
+class ProcessamentoViewSet(BaseModelViewSet):
     queryset = Processamento.objects.all()
     serializer_class = ProcessamentoSerializer
+    filterset_class = ProcessamentoFilter
 
+# Filtro e ViewSet para Exportação
+class ExportacaoFilter(filters.FilterSet):
+    ano_min = filters.NumberFilter(field_name="ano__ano", lookup_expr='gte')
+    ano_max = filters.NumberFilter(field_name="ano__ano", lookup_expr='lte')
+    quantidade_min = filters.NumberFilter(field_name="quantidade", lookup_expr='gte')
+    quantidade_max = filters.NumberFilter(field_name="quantidade", lookup_expr='lte')
+    produto = filters.CharFilter(field_name="produto__nome", lookup_expr='icontains')
+    pais_nome = filters.CharFilter(field_name="pais__nome", lookup_expr='icontains')
 
-class ExportacaoViewSet(PaisViewSet):
-    """
-    ViewSet para o modelo Exportacao.
+    class Meta:
+        model = Exportacao
+        fields = ['produto', 'pais_nome', 'ano_min', 'ano_max', 'quantidade_min', 'quantidade_max']
 
-    Herda configurações padrão de PaisViewSet.
-    """
-
+class ExportacaoViewSet(BaseModelViewSet):
     queryset = Exportacao.objects.all()
     serializer_class = ExportacaoSerializer
+    filterset_class = ExportacaoFilter
 
+# Filtro e ViewSet para Importação
+class ImportacaoFilter(filters.FilterSet):
+    ano_min = filters.NumberFilter(field_name="ano__ano", lookup_expr='gte')
+    ano_max = filters.NumberFilter(field_name="ano__ano", lookup_expr='lte')
+    quantidade_min = filters.NumberFilter(field_name="quantidade", lookup_expr='gte')
+    quantidade_max = filters.NumberFilter(field_name="quantidade", lookup_expr='lte')
+    produto = filters.CharFilter(field_name="produto__nome", lookup_expr='icontains')
+    pais_nome = filters.CharFilter(field_name="pais__nome", lookup_expr='icontains')
 
-class ImportacaoViewSet(PaisViewSet):
-    """
-    ViewSet para o modelo Importacao.
+    class Meta:
+        model = Importacao
+        fields = ['produto', 'pais_nome', 'ano_min', 'ano_max', 'quantidade_min', 'quantidade_max']
 
-    Herda configurações padrão de PaisViewSet.
-    """
-
+class ImportacaoViewSet(BaseModelViewSet):
     queryset = Importacao.objects.all()
     serializer_class = ImportacaoSerializer
+    filterset_class = ImportacaoFilter
 
-
-class AnoValorViewSet(BaseModelViewSet):
-    """
-    ViewSet para o modelo AnoValor.
-
-    Fornece ações padrão e permite filtragem, pesquisa e ordenação
-    por vários campos, incluindo campos relacionados.
-    """
-
-    queryset = AnoValor.objects.all()
-    serializer_class = AnoValorSerializer
-
-    # Campos disponíveis para filtragem, incluindo campos relacionados
-    filterset_fields = [
-        "ano",
-        "valor",
-        "tipo_valor",
-        "producao__produto",
-        "producao__tipo",
-        "comercio__produto",
-        "comercio__tipo",
-        "processamento__produto",
-        "processamento__tipo",
-        "exportacao__pais__nome",
-        "importacao__pais__nome",
-    ]
-    # Campos disponíveis para pesquisa
-    search_fields = [
-        "ano",
-        "valor",
-        "tipo_valor",
-        "producao__produto",
-        "producao__tipo",
-        "comercio__produto",
-        "comercio__tipo",
-        "processamento__produto",
-        "processamento__tipo",
-        "exportacao__pais__nome",
-        "importacao__pais__nome",
-    ]
-    # Campos disponíveis para ordenação
-    ordering_fields = [
-        "ano",
-        "valor",
-        "tipo_valor",
-        "producao__produto",
-        "producao__tipo",
-        "comercio__produto",
-        "comercio__tipo",
-        "processamento__produto",
-        "processamento__tipo",
-        "exportacao__pais__nome",
-        "importacao__pais__nome",
-    ]
+# Filtro e ViewSet para Ano
+class AnoViewSet(BaseModelViewSet):
+    queryset = Ano.objects.all()
+    serializer_class = AnoSerializer
+    search_fields = ['ano']
+    ordering_fields = ['ano']

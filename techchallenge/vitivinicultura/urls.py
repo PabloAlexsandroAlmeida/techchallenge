@@ -2,11 +2,11 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from vitivinicultura.views import (
     ProducaoViewSet,
-    ComercioViewSet,
+    ComercializacaoViewSet,  # Alterado de ComercioViewSet para ComercializacaoViewSet
     ProcessamentoViewSet,
     ExportacaoViewSet,
     ImportacaoViewSet,
-    AnoValorViewSet,
+    AnoViewSet,  # Alterado de AnoValorViewSet para AnoViewSet
 )
 
 """
@@ -19,11 +19,11 @@ utilizando o DefaultRouter do Django REST Framework para registrar os viewsets.
 # Criação do roteador padrão e registro dos viewsets
 router = DefaultRouter()
 router.register(r"producao", ProducaoViewSet, basename="producao")
-router.register(r"comercio", ComercioViewSet, basename="comercio")
+router.register(r"comercializacao", ComercializacaoViewSet, basename="comercializacao")  # Alterado de comercio para comercializacao
 router.register(r"processamento", ProcessamentoViewSet, basename="processamento")
 router.register(r"exportacao", ExportacaoViewSet, basename="exportacao")
 router.register(r"importacao", ImportacaoViewSet, basename="importacao")
-router.register(r"anovalor", AnoValorViewSet, basename="anovalor")
+router.register(r"ano", AnoViewSet, basename="ano")  # Alterado de anovalor para ano
 
 # Definição dos padrões de URL
 urlpatterns = [
