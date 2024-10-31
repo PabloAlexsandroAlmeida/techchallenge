@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app/
 
-EXPOSE 8000
+EXPOSE 80
 
 RUN python manage.py collectstatic --noinput
 RUN python manage.py dataset_stage-1
@@ -30,6 +30,6 @@ ENV PYTHONUNBUFFERED=1
 
 RUN python manage.py migrate
 
-CMD ["uwsgi", "--http", "0.0.0.0:8000", "--module", "techchallenge.wsgi", "--master", "--processes", "4", "--threads", "2"]
+#CMD ["uwsgi", "--http", "0.0.0.0:8000", "--module", "techchallenge.wsgi", "--master", "--processes", "4", "--threads", "2"]
 
-#CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:80"]
