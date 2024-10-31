@@ -1,5 +1,5 @@
 
-# Vitivinicultura Data API
+# Vitivinicultura Data API v1
 
 Este projeto é uma aplicação web construída com Django e Django REST Framework que fornece uma API para acessar dados relacionados à vitivinicultura no Brasil. Os dados incluem informações sobre produção, comércio, processamento, importação e exportação de produtos vitivinícolas.
 
