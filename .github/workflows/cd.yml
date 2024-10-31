@@ -27,6 +27,7 @@ jobs:
 
     - name: Build Docker image
       run: |
+        cd techchallenge 
         #docker build -t ${{ secrets.REGISTRY_NAME }}.azurecr.io/myapp:${{ github.sha }} .
         ls -lart
         docker build -t tech .
