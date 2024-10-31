@@ -1,4 +1,4 @@
-name: Python Code Quality and Security Analysis
+name: Code Quality and Security
 
 on:
   push:
