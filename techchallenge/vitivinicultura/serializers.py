@@ -107,8 +107,11 @@ class ExportacaoSerializer(PaisRelatedSerializer):
     Herda de PaisRelatedSerializer.
     """
 
-    class Meta(PaisRelatedSerializer.Meta):
+    pais = PaisSerializer(read_only=True)
+
+    class Meta(ProdutoTipoSerializer.Meta):
         model = Exportacao
+        fields = ProdutoTipoSerializer.Meta.fields + ["pais"]
 
 
 # Serializer para Importacao, incluindo valores por ano.
@@ -119,5 +122,8 @@ class ImportacaoSerializer(PaisRelatedSerializer):
     Herda de PaisRelatedSerializer.
     """
 
-    class Meta(PaisRelatedSerializer.Meta):
+    pais = PaisSerializer(read_only=True)
+    
+    class Meta(ProdutoTipoSerializer.Meta):
         model = Importacao
+        fields = ProdutoTipoSerializer.Meta.fields + ["pais"]

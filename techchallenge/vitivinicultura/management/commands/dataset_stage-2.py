@@ -52,7 +52,7 @@ def load_json(file_name: str) -> List[Dict[str, Any]]:
         FileNotFoundError: Se o arquivo não for encontrado.
         json.JSONDecodeError: Se ocorrer um erro ao decodificar o JSON.
     """
-    file_path = os.path.join(settings.BASE_DIR, "vitivinicultura", "data", file_name)
+    file_path = os.path.join(settings.BASE_DIR, "techchallenge", "vitivinicultura", "data", file_name)
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -229,7 +229,7 @@ class Command(BaseCommand):
                 "ano_valor_field_name": "comercio",
             },
             {
-                "file_name": "processamento_sanitizado.json",
+                "file_name": "processamento_viniferas_sanitizado.json",
                 "model": Processamento,
                 "model_fields": ["produto", "tipo"],
                 "ano_valor_field_name": "processamento",
@@ -238,15 +238,75 @@ class Command(BaseCommand):
                 },  # Mapeia 'cultivar' para 'produto'
             },
             {
-                "file_name": "exportacao_sanitizado.json",
+                "file_name": "processamento_americanas_hibridas_sanitizado.json",
+                "model": Processamento,
+                "model_fields": ["produto", "tipo"],
+                "ano_valor_field_name": "processamento",
+                "field_mappings": {
+                    "cultivar": "produto"
+                },  # Mapeia 'cultivar' para 'produto'
+            },
+            {
+                "file_name": "processamento_uva_mesa_sanitizado.json",
+                "model": Processamento,
+                "model_fields": ["produto", "tipo"],
+                "ano_valor_field_name": "processamento",
+                "field_mappings": {
+                    "cultivar": "produto"
+                },  # Mapeia 'cultivar' para 'produto'
+            },
+            {
+                "file_name": "exportacao_vinhos_mesa_sanitizado.json",
                 "model": Exportacao,
-                "model_fields": ["pais"],
+                "model_fields": ["pais", "produto", "tipo"],
                 "ano_valor_field_name": "exportacao",
             },
             {
-                "file_name": "importacao_sanitizado.json",
+                "file_name": "exportacao_espumantes_sanitizado.json",
+                "model": Exportacao,
+                "model_fields": ["pais", "produto", "tipo"],
+                "ano_valor_field_name": "exportacao",
+            },
+            {
+                "file_name": "exportacao_uvas_frescas_sanitizado.json",
+                "model": Exportacao,
+                "model_fields": ["pais", "produto", "tipo"],
+                "ano_valor_field_name": "exportacao",
+            },
+            {
+                "file_name": "exportacao_suco_uva_sanitizado.json",
+                "model": Exportacao,
+                "model_fields": ["pais", "produto", "tipo"],
+                "ano_valor_field_name": "exportacao",
+            },
+            {
+                "file_name": "importacao_vinhos_mesa_sanitizado.json",
                 "model": Importacao,
-                "model_fields": ["pais"],
+                "model_fields": ["pais", "produto", "tipo"],
+                "ano_valor_field_name": "importacao",
+            },
+            {
+                "file_name": "importacao_espumantes_sanitizado.json",
+                "model": Importacao,
+                "model_fields": ["pais", "produto", "tipo"],
+                "ano_valor_field_name": "importacao",
+            },
+            {
+                "file_name": "importacao_uvas_frescas_sanitizado.json",
+                "model": Importacao,
+                "model_fields": ["pais", "produto", "tipo"],
+                "ano_valor_field_name": "importacao",
+            },
+            {
+                "file_name": "importacao_uvas_passas_sanitizado.json",
+                "model": Importacao,
+                "model_fields": ["pais", "produto", "tipo"],
+                "ano_valor_field_name": "importacao",
+            },
+            {
+                "file_name": "importacao_suco_uva_sanitizado.json",
+                "model": Importacao,
+                "model_fields": ["pais", "produto", "tipo"],
                 "ano_valor_field_name": "importacao",
             },
         ]

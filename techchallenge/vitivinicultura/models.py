@@ -83,7 +83,7 @@ class Pais(models.Model):
         return self.nome
 
 
-class Importacao(models.Model):
+class Importacao(ProdutoTipoModel):
     """
     Modelo que representa os dados de importação.
 
@@ -93,10 +93,10 @@ class Importacao(models.Model):
     pais = models.ForeignKey(Pais, on_delete=models.CASCADE, related_name="importacoes")
 
     def __str__(self) -> str:
-        return f"Importação de {self.pais.nome}"
+        return f"Importação - {self.produto} ({self.tipo}) de {self.pais.nome}"
 
 
-class Exportacao(models.Model):
+class Exportacao(ProdutoTipoModel):
     """
     Modelo que representa os dados de exportação.
 
@@ -106,7 +106,7 @@ class Exportacao(models.Model):
     pais = models.ForeignKey(Pais, on_delete=models.CASCADE, related_name="exportacoes")
 
     def __str__(self) -> str:
-        return f"Exportação para {self.pais.nome}"
+        return f"Exportação - {self.produto} ({self.tipo}) para {self.pais.nome}"
 
 
 class AnoValor(models.Model):

@@ -47,6 +47,8 @@ class SanitizadorDataset:
         self.coluna_grupo: str = config.get("coluna_grupo", "Tipo")
         self.special_processing: Optional[str] = config.get("special_processing")
         self.df: Optional[pd.DataFrame] = None
+        self.produto: str = config.get("produto", "")
+        self.tipo: str = config.get("tipo", "")
 
     def baixar_e_carregar_csv(self) -> None:
         """
@@ -170,6 +172,8 @@ class SanitizadorDataset:
                         indice_inicio = indices_outros[0]
                         df_sanitizado.loc[indice_inicio:, "Tipo"] = "OUTROS"
                 self.df = df_sanitizado
+            self.df['produto'] = self.produto
+            self.df['tipo'] = self.tipo or self.df.get('Tipo', 'tipo_desconhecido')
 
             logger.info("Sanitização concluída")
             return self.df
@@ -288,7 +292,7 @@ class Command(BaseCommand):
                 "codificacao": "utf-8",
                 "special_processing": None,
             },
-            "processamento": {
+            "processamento_viniferas": {
                 "url": "http://vitibrasil.cnpuv.embrapa.br/download/ProcessaViniferas.csv",
                 "columns_to_drop": ["control", "id"],
                 "nome_coluna": "cultivar",
@@ -296,6 +300,27 @@ class Command(BaseCommand):
                 "delimitador": ";",
                 "codificacao": "utf-8",
                 "special_processing": None,
+                "tipo": "Viníferas",
+            },
+            "processamento_americanas_hibridas": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ProcessaAmericanas.csv",
+                "columns_to_drop": ["control", "id"],
+                "nome_coluna": "cultivar",
+                "coluna_grupo": "Tipo",
+                "delimitador": "\t",
+                "codificacao": "utf-8",
+                "special_processing": None,
+                "tipo": "Americanas e Híbridas",
+            },
+            "processamento_uva_mesa": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ProcessaMesa.csv",
+                "columns_to_drop": ["control", "id"],
+                "nome_coluna": "cultivar",
+                "coluna_grupo": "Tipo",
+                "delimitador": "\t",
+                "codificacao": "utf-8",
+                "special_processing": None,
+                "tipo": "Uva de Mesa",
             },
             "comercio": {
                 "url": "http://vitibrasil.cnpuv.embrapa.br/download/Comercio.csv",
@@ -306,7 +331,7 @@ class Command(BaseCommand):
                 "codificacao": "utf-8",
                 "special_processing": "comercio_outros_vinhos",
             },
-            "importacao": {
+            "importacao_vinhos_mesa": {
                 "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpVinhos.csv",
                 "columns_to_drop": [],
                 "nome_coluna": None,
@@ -314,8 +339,54 @@ class Command(BaseCommand):
                 "delimitador": ";",
                 "codificacao": "utf-8",
                 "special_processing": "importacao_exportacao",
+                "produto": "Vinhos de Mesa",
+                "tipo": "Importação",
             },
-            "exportacao": {
+            "importacao_espumantes": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpEspumantes.csv",
+                "columns_to_drop": [],
+                "nome_coluna": None,
+                "coluna_grupo": None,
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Espumantes",
+                "tipo": "Importação",
+            },
+            "importacao_uvas_frescas": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpFrescas.csv",
+                "columns_to_drop": [],
+                "nome_coluna": None,
+                "coluna_grupo": None,
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Uvas Frescas",
+                "tipo": "Importação",
+            },
+            "importacao_uvas_passas": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpPassas.csv",
+                "columns_to_drop": [],
+                "nome_coluna": None,
+                "coluna_grupo": None,
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Uvas Passas",
+                "tipo": "Importação",
+            },
+            "importacao_suco_uva": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ImpSuco.csv",
+                "columns_to_drop": [],
+                "nome_coluna": None,
+                "coluna_grupo": None,
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Suco de Uva",
+                "tipo": "Importação",
+            },
+            "exportacao_vinhos_mesa": {
                 "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpVinho.csv",
                 "columns_to_drop": [],
                 "nome_coluna": None,
@@ -323,20 +394,56 @@ class Command(BaseCommand):
                 "delimitador": ";",
                 "codificacao": "utf-8",
                 "special_processing": "importacao_exportacao",
+                "produto": "Vinhos de Mesa",
+                "tipo": "Exportação",
+            },
+            "exportacao_espumantes": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpEspumantes.csv",
+                "columns_to_drop": [],
+                "nome_coluna": None,
+                "coluna_grupo": None,
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Espumantes",
+                "tipo": "Exportação",
+            },
+            "exportacao_uvas_frescas": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpUva.csv",
+                "columns_to_drop": [],
+                "nome_coluna": None,
+                "coluna_grupo": None,
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Uvas Frescas",
+                "tipo": "Exportação",
+            },
+            "exportacao_suco_uva": {
+                "url": "http://vitibrasil.cnpuv.embrapa.br/download/ExpSuco.csv",
+                "columns_to_drop": [],
+                "nome_coluna": None,
+                "coluna_grupo": None,
+                "delimitador": ";",
+                "codificacao": "utf-8",
+                "special_processing": "importacao_exportacao",
+                "produto": "Suco Uva",
+                "tipo": "Exportação",
             },
         }
 
         # Definir o caminho onde os dados serão salvos
         caminho_saida = "./techchallenge/vitivinicultura/data/"
 
-        for chave, config in datasets.items():
+        for name, config in datasets.items():
             config["caminho_saida"] = caminho_saida
+            config["name"] = name  # Adiciona o nome ao dicionário de configuração
             try:
-                logger.info(f"\nIniciando processamento para: {chave}")
+                logger.info(f"\nIniciando processamento para: {config['name']}")
                 sanitizador = SanitizadorDataset(config)
                 sanitizador.baixar_e_carregar_csv()
                 df_sanitizado = sanitizador.sanitizar()
-                sanitizador.salvar_csv(df_sanitizado, f"{chave}_sanitizado.csv")
-                sanitizador.salvar_json(df_sanitizado, f"{chave}_sanitizado.json")
+                sanitizador.salvar_csv(df_sanitizado, f"{config['name']}_sanitizado.csv")
+                sanitizador.salvar_json(df_sanitizado, f"{config['name']}_sanitizado.json")
             except Exception as e:
-                logger.error(f"Erro ao processar {chave}: {e}")
+                logger.error(f"Erro ao processar {config['name']}: {e}")
