@@ -1,0 +1,11 @@
+Tech Challenge - ML3 - Fase 1
+
+Alunos: 
+- Pablo Almeida - RM358204
+- Stephanie D'Angelo - RM358884
+- Yuri Braz - RM358495
+
+Links: 
+- Repositório: https://github.com/PabloAlexsandroAlmeida/techchallenge/tree/develop
+- Arquitetura: https://github.com/PabloAlexsandroAlmeida/techchallenge/blob/develop/ARCH-Tech_Challenge.png
+- Vídeo: https://drive.proton.me/urls/8S76DR4THM#OJBds7E0FhdZ
