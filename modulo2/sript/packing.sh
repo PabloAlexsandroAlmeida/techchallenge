@@ -2,7 +2,7 @@
 set -e
 
 LAMBDA_DIR=$1
-ZIP_FILE="lambda_package.zip"
+ZIP_FILE=$2
 
 # Remover pacote anterior
 rm -f $ZIP_FILE

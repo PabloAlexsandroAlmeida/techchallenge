@@ -22,3 +22,14 @@ variable "iam_policy_attachment" {
   description = "IAM policy attachment dependency"
   type        = any
 }
+
+variable "s3_bucket" {
+  description = "Name of the S3 bucket for lambda deploy"
+  type        = string
+}
+
+variable "s3_key" {
+  description = "Name of the S3 bucke deploy key"
+  type        = string
+}
+
