@@ -27,7 +27,8 @@ resource "aws_iam_policy" "lambda_s3_policy" {
           "s3:PutObject",
           "s3:ListBucket",
           "s3:GetObject",
-          "lambda:GetLayerVersion"
+          "lambda:GetLayerVersion",
+          "s3:GetObject"
         ]
         Resource = [
           "arn:aws:s3:::${var.bucket_name}",

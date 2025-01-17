@@ -45,7 +45,7 @@ def lambda_handler(event, context):
 
     # Enviar o arquivo Parquet para o S3
     bucket_name = '897722708429-raw'  # Substitua pelo seu nome do bucket
-    s3_file_key = f'b3-{date}-portfolio.parquet'
+    s3_file_key = 'b3-portfolio.parquet'
 
     try:
         s3_client.upload_file(parquet_file_path, bucket_name, s3_file_key)

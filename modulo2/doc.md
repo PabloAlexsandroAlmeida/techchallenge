@@ -16,5 +16,5 @@ terraform apply tfplan
 terraform state list  
 terraform plan -destroy -out=destroyplan
 terraform apply destroyplan
-rm -f terraform.tfstate terraform.tfstate.backup tfplan destroyplan
+rm -rf .terraform* terraform.tfstate terraform.tfstate.backup tfplan destroyplan
 

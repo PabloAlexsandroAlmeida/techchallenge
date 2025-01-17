@@ -1,5 +1,5 @@
 variable "lambda_function_name" {
-  default = "lambda-ingestao"
+  default = "lambda"
 }
 
 variable "s3_bucket_name_raw" {
