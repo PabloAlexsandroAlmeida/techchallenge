@@ -1,6 +1,6 @@
 # Gerar zip das lamabdas
-chmod +x sript/packing.sh lamnda-b3
-chmod +x sript/packing.sh lamnda-glue
+chmod +x sript/packing.sh lamnda-ingestao lamnda-ingestao.zip
+chmod +x sript/packing.sh lamnda-glue lamnda-glue.zip
 
 
 # Provisionar os recursos

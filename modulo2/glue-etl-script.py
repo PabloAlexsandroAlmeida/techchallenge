@@ -36,12 +36,18 @@ AmazonS3_node1736894447778 = glueContext.create_dynamic_frame.from_options(forma
 DropDuplicates_node1736894583598 =  DynamicFrame.fromDF(AmazonS3_node1736894447778.toDF().dropDuplicates(), glueContext, "DropDuplicates_node1736894583598")
 
 # Script generated for node Aggregate
-Aggregate_node1736894717018 = sparkAggregate(glueContext, parentFrame = DropDuplicates_node1736894583598, groups = ["Tipo", "Acao"], aggs = [["Acao", "sum"]], transformation_ctx = "Aggregate_node1736894717018")
+Aggregate_node1736894717018 = sparkAggregate(glueContext, parentFrame = DropDuplicates_node1736894583598, groups = ["Codigo", "Acao", "Tipo", "QuantTeorica", "Partic", "Data"], aggs = [["QuantTeorica", "sum"], ["Data", "max"]], transformation_ctx = "Aggregate_node1736894717018")
+
+# Script generated for node Rename Field
+RenameField_node1737244902551 = RenameField.apply(frame=Aggregate_node1736894717018, old_name="`sum(QuantTeorica)`", new_name="SomaQuantidade Teorica", transformation_ctx="RenameField_node1737244902551")
+
+# Script generated for node Rename Field
+RenameField_node1737245220222 = RenameField.apply(frame=RenameField_node1737244902551, old_name="`max(Data)`", new_name="DataMaxima", transformation_ctx="RenameField_node1737245220222")
 
 # Script generated for node Amazon S3
 EvaluateDataQuality().process_rows(frame=Aggregate_node1736894717018, ruleset=DEFAULT_DATA_QUALITY_RULESET, publishing_options={"dataQualityEvaluationContext": "EvaluateDataQuality_node1736894434565", "enableDataQualityResultsPublishing": True}, additional_options={"dataQualityResultsPublishing.strategy": "BEST_EFFORT", "observations.scope": "ALL"})
 AmazonS3_node1736894888566 = glueContext.getSink(path="s3://897722708429-refined", connection_type="s3", updateBehavior="UPDATE_IN_DATABASE", partitionKeys=[], enableUpdateCatalog=True, transformation_ctx="AmazonS3_node1736894888566")
-AmazonS3_node1736894888566.setCatalogInfo(catalogDatabase="pos-tech",catalogTableName="challenge")
+AmazonS3_node1736894888566.setCatalogInfo(catalogDatabase="pos-tech",catalogTableName="fiap-mlet3")
 AmazonS3_node1736894888566.setFormat("glueparquet", compression="snappy")
 AmazonS3_node1736894888566.writeFrame(Aggregate_node1736894717018)
 job.commit()
